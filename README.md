@@ -10,7 +10,7 @@ DhanLekha (धनलेखा — "wealth ledger") is a multi-tenant, offline-fi
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js + React |
+| Frontend | Next.js + React + TypeScript |
 | Desktop | Electron |
 | Backend | Node.js + Express.js + TypeScript |
 | AI Service | Python + FastAPI |
@@ -61,15 +61,12 @@ dhanlekha/
 │   └── ai-service/                 # Python FastAPI (Sprint 14+)
 │       └── README.md
 ├── packages/
-│   ├── shared/                     # Shared utilities
-│   │   ├── api.ts                  # Axios client factory with interceptors
-│   │   ├── index.ts
-│   │   ├── tsconfig.json
-│   │   └── package.json
-│   └── shared-types/               # Shared TS interfaces and types
-│       ├── src/index.ts
-│       ├── package.json
-│       └── tsconfig.json
+│   └── shared/                     # Shared utilities & types
+│       ├── api.ts                  # Axios client factory with interceptors
+│       ├── index.ts                # Main export
+│       ├── types.ts                # Shared TS interfaces (User, Tenant, etc)
+│       ├── tsconfig.json
+│       └── package.json
 ├── docs/
 │   ├── srs.md                      # Software Requirements Specification
 │   ├── db.md                       # Database schema (25 tables)
