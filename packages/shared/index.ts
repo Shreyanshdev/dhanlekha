@@ -1,5 +1,2 @@
-const { createApiClient } = require('./api');
-
-module.exports = {
-  createApiClient,
-};
+export { createApiClient } from './api';
+export type { ApiClientOptions } from './api';

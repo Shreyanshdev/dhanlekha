@@ -1,4 +1,11 @@
-const axios = require('axios');
+import axios, { AxiosInstance } from 'axios';
+
+export interface ApiClientOptions {
+  baseURL: string;
+  timeout?: number;
+  getToken?: () => string | null | undefined;
+  onAuthError?: (error: any) => void;
+}
 
 /**
  * Create a configured Axios instance.
@@ -10,7 +17,7 @@ const axios = require('axios');
  * @param {Function} [options.onAuthError] — Called on 401 responses
  * @returns {import('axios').AxiosInstance}
  */
-function createApiClient({ baseURL, timeout = 10000, getToken, onAuthError }) {
+export function createApiClient({ baseURL, timeout = 10000, getToken, onAuthError }: ApiClientOptions): AxiosInstance {
   const client = axios.create({
     baseURL,
     timeout,
@@ -45,4 +52,4 @@ function createApiClient({ baseURL, timeout = 10000, getToken, onAuthError }) {
   return client;
 }
 
-module.exports = { createApiClient };
+
