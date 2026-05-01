@@ -2,7 +2,9 @@
  * Request logging middleware.
  * Logs method, URL, status code, and response time for every request.
  */
-function requestLogger(req, res, next) {
+import type { Request, Response, NextFunction } from 'express';
+
+function requestLogger(req: Request, res: Response, next: NextFunction) {
   const start = Date.now();
 
   // Log on response finish

@@ -8,7 +8,8 @@ import errorHandler from './middleware/errorHandler.middleware';
 
 // Routes
 import healthRoutes from './modules/health/health.routes';
-
+import authRoutes from './modules/auth/auth.routes';
+import tenantsRoutes from './modules/tenants/tenants.routes';
 const app = express();
 
 // ── Security ──
@@ -24,6 +25,8 @@ app.use(requestLogger);
 
 // ── API Routes ──
 app.use('/api/v1/health', healthRoutes);
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/tenants', tenantsRoutes);
 
 // ── 404 Handler ──
 app.use((_req, res) => {
