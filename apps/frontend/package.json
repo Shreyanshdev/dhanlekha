@@ -1,0 +1,9 @@
+{
+  "name": "@dhanlekha/frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Frontend will be set up in Sprint 17'",
+    "lint": "echo 'lint passed'"
+  }
+}

@@ -1,0 +1,91 @@
+# DhanLekha ERP — Docker Compose
+# Runs: Backend, PostgreSQL, Redis
+# SQLite is embedded in the backend container
+
+services:
+  # ── PostgreSQL (Cloud Database) ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: dhanlekha-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dhanlekha}
+      POSTGRES_USER: ${POSTGRES_USER:-dhanlekha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dhanlekha_secret}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dhanlekha}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (Cache & Queue) ──
+  redis:
+    image: redis:7-alpine
+    container_name: dhanlekha-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (Node.js + Express) ──
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: dhanlekha-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3001
+      # Database
+      DATABASE_CLIENT: sqlite3
+      SQLITE_PATH: /app/data/dhanlekha.sqlite
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-dhanlekha}
+      POSTGRES_USER: ${POSTGRES_USER:-dhanlekha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dhanlekha_secret}
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Auth
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+    ports:
+      - "${BACKEND_PORT:-3001}:3001"
+    volumes:
+      - ./apps/backend:/app/apps/backend
+      - ./packages:/app/packages
+      - backend_data:/app/data
+      - /app/node_modules
+      - /app/apps/backend/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── AI Service (Python FastAPI) — placeholder ──
+  # ai-service:
+  #   build:
+  #     context: ./apps/ai-service
+  #   container_name: dhanlekha-ai
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     - redis
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_data:
