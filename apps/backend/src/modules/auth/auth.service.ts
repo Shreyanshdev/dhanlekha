@@ -6,6 +6,7 @@ import { withTransaction } from '../../database/transaction';
 import { TenantRepository } from '../../repositories/tenant.repo';
 import { UserRepository } from '../../repositories/user.repo';
 import { BranchRepository } from '../../repositories/branch.repo';
+import type { Tenant, User } from '@dhanlekha/shared';
 import env from '../../config/env';
 
 /**
@@ -29,14 +30,15 @@ export async function registerTenant(data: any) {
     const branchId = uuidv4(); // ── NEW: Default Branch ──
 
     // Create Tenant
-    await tenantRepo.create({
+    const tenantData: Partial<Tenant> = {
       id: tenantId,
       name: tenantName,
       email: tenantEmail,
       phone: phone || null,
       plan_id: planId || 'starter',
       status: 'active',
-    } as any);
+    };
+    await tenantRepo.create(tenantData);
 
     // ── CREATE DEFAULT BRANCH ──
     const branchRepo = new BranchRepository(tenantId, trx);
@@ -58,15 +60,16 @@ export async function registerTenant(data: any) {
 
     // Create Admin User (assigned to Main Store)
     const userRepo = new UserRepository(tenantId, trx);
-    await userRepo.create({
+    const userData: Partial<User> = {
       id: userId,
       tenant_id: tenantId,
-      branch_id: branchId, // assigned to default branch
+      branch_id: branchId,
       name: userName,
       email: tenantEmail,
       password_hash: passwordHash,
       role: 'admin',
-    } as any);
+    };
+    await userRepo.create(userData);
 
     // Create default invoice sequence (linked to branch)
     await trx('invoice_sequences').insert({
@@ -122,7 +125,7 @@ export async function login(data: any) {
         role: user.role,
       },
     env.jwt.secret,
-    { expiresIn: env.jwt.expiresIn as any }
+    { expiresIn: env.jwt.expiresIn } as jwt.SignOptions
   );
 
   return {

@@ -15,6 +15,14 @@ export class InvoiceRepository extends BranchScopedRepository<Invoice> {
     return await this.getQuery().where({ invoice_number: invoiceNumber }).first();
   }
 
+  /**
+   * Find invoice even if soft-deleted (needed for cancellation idempotency check).
+   */
+  async findIncludingDeleted(id: string): Promise<Invoice | undefined> {
+    const qb = this.trx ? this.trx(this.tableName) : db(this.tableName);
+    return await qb.where({ id, tenant_id: this.tenantId, branch_id: this.branchId }).first();
+  }
+
   async listPaged(page: number, limit: number, filters: any = {}): Promise<{ items: Invoice[], total: number }> {
     const query = this.getQuery();
 

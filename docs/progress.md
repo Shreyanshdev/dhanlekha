@@ -4,7 +4,7 @@
 
 ---
 
-## Current Sprint: Sprint 5 — Billing Engine
+## Current Sprint: Sprint 6 — Barcode-Based Billing
 **Status:** 🔄 In Progress
 **Started:** 2026-05-02
 **Completed:** TBD
@@ -129,11 +129,29 @@
 | 5 | `GET /api/v1/suppliers` — list/search | ✅ Done | Search by name or phone |
 | 6 | Soft-delete support for both | ✅ Done | Preserves history for billing |
 
-### Sprint 5: Billing Engine
-**Status:** 🔄 In Progress
+### Sprint 5: Billing Engine (Core)
+**Status:** ✅ Complete
+**Goal:** Build the most critical part of the system — atomic, GST-compliant billing.
 
-### Sprint 6: Barcode-Based Billing
-**Status:** ⬜ Not Started
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Create `invoices`, `invoice_items`, `customer_ledger` | ✅ Done | Migration: `20260502100000_sprint5_billing_engine.ts` |
+| 2 | Consolidated Domain Repositories | ✅ Done | Merged Invoice and Customer repositories |
+| 3 | Thread-safe sequential numbering | ✅ Done | Using `SELECT FOR UPDATE` on sequences |
+| 4 | Atomic `POST /api/v1/invoices` workflow | ✅ Done | 10-step atomic flow with stock/ledger sync |
+| 5 | Credit Limit Enforcement | ✅ Done | Blocks sales if customer's outstanding balance > limit |
+| 6 | Soft-delete cancellation logic | ✅ Done | Full reversal of stock and ledger entries |
+| 7 | Full Code Review & Stress Test | ✅ Done | Passed 45/45 critical assertions in `billing_stress_test.js` |
+
+### Sprint 6: Barcode-Based Billing (Backend Enhancement)
+**Status:** 🔄 In Progress
+**Goal:** Optimize backend for high-speed scanning and manual price overrides.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | `GET /api/v1/products/barcode/:code` | ✅ Done | Super-fast direct lookup |
+| 2 | Manual Price Override Logic | ✅ Done | Implemented in `createInvoice` with fallbacks |
+| 3 | Bulk Scan Optimization | 🔄 In Progress | Batch product/inventory lookup implemented |
 
 ### Sprint 7: Payment System
 **Status:** ⬜ Not Started
@@ -141,7 +159,7 @@
 ### Sprint 8: Ledger System
 **Status:** ⬜ Not Started
 
-### Sprint 9: Purchase & Expense Management
+### Sprint 9: Purchase Management
 **Status:** ⬜ Not Started
 
 ### Sprint 10: Discount & Offer Engine

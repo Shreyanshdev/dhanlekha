@@ -119,9 +119,10 @@ export async function createInvoice(
 
       // Get latest ledger entry to calculate running balance
       const latestEntry = await customerRepo.getLatestLedgerEntry(data.customer_id);
-      const currentBalance = latestEntry ? Number(latestEntry.running_balance) : Number(customer.total_due);
-      const newBalance = currentBalance + finalAmount; 
-      
+      const startBalance = latestEntry ? Number(latestEntry.running_balance) : Number(customer.total_due);
+
+      // A. Record Invoice Debit (full amount owed)
+      const balanceAfterInvoice = startBalance + finalAmount;
       await customerRepo.addLedgerEntry({
         id: uuidv4(),
         tenant_id: tenantId,
@@ -130,11 +131,27 @@ export async function createInvoice(
         reference_id: invoiceId,
         debit: finalAmount,
         credit: 0,
-        running_balance: newBalance,
+        running_balance: balanceAfterInvoice,
       });
 
-      // Sync the denormalized total_due on customer
-      await customerRepo.updateBalance(data.customer_id, finalAmount);
+      // B. Record Payment Credit (if any payment made at time of billing)
+      let finalBalance = balanceAfterInvoice;
+      if (data.amount_paid > 0) {
+        finalBalance = balanceAfterInvoice - data.amount_paid;
+        await customerRepo.addLedgerEntry({
+          id: uuidv4(),
+          tenant_id: tenantId,
+          customer_id: data.customer_id,
+          entry_type: 'payment',
+          reference_id: invoiceId,
+          debit: 0,
+          credit: data.amount_paid,
+          running_balance: finalBalance,
+        });
+      }
+
+      // Sync denormalized total_due (only the unpaid portion)
+      await customerRepo.updateBalance(data.customer_id, amountDue);
     }
 
     return (await invoiceRepo.findById(invoiceId)) as Invoice;
@@ -193,7 +210,7 @@ export async function cancelInvoice(
     const logRepo = new InventoryLogRepository(tenantId, branchId, trx);
     const customerRepo = new CustomerRepository(tenantId, trx);
 
-    const invoice = await invoiceRepo.findById(invoiceId);
+    const invoice = await invoiceRepo.findIncludingDeleted(invoiceId);
     if (!invoice) throw new NotFoundError('Invoice');
     if (invoice.status === 'cancelled') throw new BadRequestError('Invoice is already cancelled');
 
@@ -221,7 +238,8 @@ export async function cancelInvoice(
     if (invoice.customer_id) {
       const latestEntry = await customerRepo.getLatestLedgerEntry(invoice.customer_id);
       const currentBalance = latestEntry ? Number(latestEntry.running_balance) : 0;
-      const newBalance = currentBalance - Number(invoice.final_amount);
+      const reversalAmount = Number(invoice.amount_due); // Only reverse the unpaid portion
+      const newBalance = currentBalance - reversalAmount;
 
       await customerRepo.addLedgerEntry({
         id: uuidv4(),
@@ -230,11 +248,12 @@ export async function cancelInvoice(
         entry_type: 'adjustment',
         reference_id: invoiceId,
         debit: 0,
-        credit: invoice.final_amount,
+        credit: reversalAmount,
         running_balance: newBalance,
       });
 
-      await customerRepo.updateBalance(invoice.customer_id, -Number(invoice.final_amount));
+      // Reverse only the amount_due (what was actually owed)
+      await customerRepo.updateBalance(invoice.customer_id, -reversalAmount);
     }
   });
 }
