@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { ConflictError, NotFoundError, BusinessRuleError } from '../../utils/errors';
 import { UserRepository } from '../../repositories/user.repo';
 import type { UserPublic } from '@dhanlekha/shared';
+import type { CreateUserInput, UpdateUserInput } from './users.validator';
 
 /**
  * List all staff users for a tenant (safe projection — no password_hash).
@@ -29,7 +30,7 @@ export async function getUserById(tenantId: string, userId: string): Promise<Use
 /**
  * Create a new staff user under a tenant (admin only).
  */
-export async function createUser(tenantId: string, data: any): Promise<UserPublic> {
+export async function createUser(tenantId: string, data: CreateUserInput): Promise<UserPublic> {
   const repo = new UserRepository(tenantId);
   const { name, email, password, role } = data;
 
@@ -65,7 +66,7 @@ export async function createUser(tenantId: string, data: any): Promise<UserPubli
  * Update a staff user (scoped to tenant).
  * Cannot change the last admin to cashier (must always have at least one admin).
  */
-export async function updateUser(tenantId: string, userId: string, data: any): Promise<UserPublic> {
+export async function updateUser(tenantId: string, userId: string, data: UpdateUserInput): Promise<UserPublic> {
   const repo = new UserRepository(tenantId);
 
   // Fetch full user (with password_hash) for internal checks

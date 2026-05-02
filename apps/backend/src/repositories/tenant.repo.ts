@@ -9,26 +9,26 @@ import type { Tenant } from '@dhanlekha/shared';
  * override getQuery() to only apply is_deleted filtering.
  */
 export class TenantRepository extends BaseRepository<Tenant> {
-  constructor() {
+  constructor(trx?: Knex.Transaction) {
     // Tenants table is global — pass empty string as tenantId
-    super('', 'tenants');
+    super('', 'tenants', trx);
   }
 
   /** Override: tenants table has no tenant_id column */
-  protected getQuery(trx?: Knex.Transaction) {
-    return this.getRawQuery(trx);
+  protected getQuery(): Knex.QueryBuilder {
+    return this.getRawQuery();
   }
 
-  async findById(id: string, trx?: Knex.Transaction): Promise<Tenant | undefined> {
-    return await this.getQuery(trx).where({ id }).first();
+  async findById(id: string): Promise<Tenant | undefined> {
+    return await this.getQuery().where({ id }).first();
   }
 
-  async findByEmail(email: string, trx?: Knex.Transaction): Promise<Tenant | undefined> {
-    return await this.getQuery(trx).where({ email }).first();
+  async findByEmail(email: string): Promise<Tenant | undefined> {
+    return await this.getQuery().where({ email }).first();
   }
 
-  async findByIdWithPlan(id: string, trx?: Knex.Transaction): Promise<any> {
-    const tenant = await this.getQuery(trx)
+  async findByIdWithPlan(id: string): Promise<any> {
+    const tenant = await this.getQuery()
       .select('id', 'name', 'email', 'phone', 'plan_id', 'status', 'created_at')
       .where({ id })
       .first();
@@ -36,7 +36,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
     if (!tenant) return undefined;
 
     // Fetch associated plan
-    const qb = trx ? trx('plans') : (await import('../config/database')).default('plans');
+    const qb = this.trx ? this.trx('plans') : (await import('../config/database')).default('plans');
     const plan = await qb.where({ id: tenant.plan_id }).first();
     tenant.plan = plan;
 
@@ -44,11 +44,11 @@ export class TenantRepository extends BaseRepository<Tenant> {
   }
 
   /** Override: tenants table insert doesn't need tenant_id */
-  async create(data: Partial<Tenant>, trx?: Knex.Transaction): Promise<void> {
-    await this.getInsertQuery(trx).insert(data);
+  async create(data: Partial<Tenant>): Promise<void> {
+    await this.getInsertQuery().insert(data);
   }
 
-  async update(id: string, data: Partial<Tenant>, trx?: Knex.Transaction): Promise<number> {
-    return await this.getQuery(trx).where({ id }).update(data);
+  async update(id: string, data: Partial<Tenant>): Promise<number> {
+    return await this.getQuery().where({ id }).update(data);
   }
 }

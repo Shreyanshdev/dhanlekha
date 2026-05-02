@@ -15,10 +15,10 @@ export async function registerTenant(data: any) {
   const { tenantName, tenantEmail, phone, planId, userName, password } = data;
 
   return await withTransaction(async (trx) => {
-    const tenantRepo = new TenantRepository();
+    const tenantRepo = new TenantRepository(trx);
 
     // Check for duplicate tenant email
-    const existingTenant = await tenantRepo.findByEmail(tenantEmail, trx);
+    const existingTenant = await tenantRepo.findByEmail(tenantEmail);
     if (existingTenant) {
       throw new ConflictError('Tenant email is already registered');
     }
@@ -34,21 +34,21 @@ export async function registerTenant(data: any) {
       phone: phone || null,
       plan_id: planId || 'starter',
       status: 'active',
-    } as any, trx);
+    } as any);
 
     // Hash Password
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
     // Create Admin User (via UserRepository scoped to the new tenant)
-    const userRepo = new UserRepository(tenantId);
+    const userRepo = new UserRepository(tenantId, trx);
     await userRepo.create({
       id: userId,
       name: userName,
       email: tenantEmail,
       password_hash: passwordHash,
       role: 'admin',
-    } as any, trx);
+    } as any);
 
     // Create default invoice sequence (global insert via trx)
     // NOTE: invoice_sequences doesn't have its own repo yet — will get one in Sprint 5
