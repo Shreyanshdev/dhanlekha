@@ -122,7 +122,37 @@ async function runTests() {
     const cashierAlerts = await axios.get(`${BASE_URL}/products/low-stock`, { headers: cashierHeaders });
     console.log('✅ Second branch low stock count (should be 0 or different):', cashierAlerts.data.data.length);
 
-    console.log('\n🌟 ALL TESTS PASSED! Multi-Branch Scoping Verified.');
+    // 6. Customers & Suppliers (Tenant Scoped)
+    console.log('\n--- 6. Testing Customers & Suppliers ---');
+    
+    // Create Customer
+    const customerRes = await axios.post(`${BASE_URL}/customers`, {
+      name: 'Vasu Jain',
+      phone: '9876543210',
+      address: 'Lajpat Nagar, Delhi',
+      credit_limit: 50000
+    }, { headers });
+    const customerId = customerRes.data.data.id;
+    console.log('✅ Customer created:', customerId);
+
+    // Search Customer
+    const searchCustomerRes = await axios.get(`${BASE_URL}/customers?q=Vasu`, { headers });
+    console.log('✅ Search Customer count:', searchCustomerRes.data.data.length);
+
+    // Create Supplier
+    const supplierRes = await axios.post(`${BASE_URL}/suppliers`, {
+      name: 'Amul Dairy',
+      phone: '9000011122',
+      gst_number: '07AAAAA0000A1Z5'
+    }, { headers });
+    const supplierId = supplierRes.data.data.id;
+    console.log('✅ Supplier created:', supplierId);
+
+    // List Suppliers
+    const listSuppliersRes = await axios.get(`${BASE_URL}/suppliers`, { headers });
+    console.log('✅ Suppliers list count:', listSuppliersRes.data.data.length);
+
+    console.log('\n🌟 ALL TESTS PASSED! Sprint 4 Logic Verified.');
 
   } catch (error) {
     console.error('\n❌ TEST FAILED!');

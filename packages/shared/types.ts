@@ -92,6 +92,33 @@ export interface InvoiceSequence {
   updated_at: string;
 }
 
+// ─── Customers & Suppliers ───
+
+export interface Customer {
+  id: string;
+  tenant_id: string;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  credit_limit: number;
+  total_due: number;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Supplier {
+  id: string;
+  tenant_id: string;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  gst_number: string | null;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Product {
   id: string;
   tenant_id: string;

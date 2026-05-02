@@ -101,6 +101,43 @@ async function testEdgeCases() {
       console.log('❌ FAIL: Deleted product still in list!');
     }
 
+    // --- CASE 5: Customer Duplicate Phone ---
+    console.log('\n--- Case 5: Customer Duplicate Phone ---');
+    const custPhone = '9999988888';
+    await axios.post(`${BASE_URL}/customers`, {
+      name: 'Cust 1', phone: custPhone
+    }, { headers: { Authorization: `Bearer ${t1Token}` } });
+
+    try {
+      await axios.post(`${BASE_URL}/customers`, {
+        name: 'Cust 2', phone: custPhone
+      }, { headers: { Authorization: `Bearer ${t1Token}` } });
+      console.log('❌ FAIL: Duplicate customer phone allowed!');
+    } catch (err) {
+      if (err.response?.status === 409) {
+        console.log('✅ PASS: Duplicate customer phone blocked (409)');
+      } else {
+        console.log('❓ Unexpected status:', err.response?.status);
+      }
+    }
+
+    // --- CASE 6: Supplier Soft Delete ---
+    console.log('\n--- Case 6: Supplier Soft Delete ---');
+    const sRes = await axios.post(`${BASE_URL}/suppliers`, {
+      name: 'To Delete Supplier'
+    }, { headers: { Authorization: `Bearer ${t1Token}` } });
+    const sId = sRes.data.data.id;
+
+    await axios.delete(`${BASE_URL}/suppliers/${sId}`, { headers: { Authorization: `Bearer ${t1Token}` } });
+    console.log('✅ Supplier soft-deleted.');
+
+    const sList = await axios.get(`${BASE_URL}/suppliers`, { headers: { Authorization: `Bearer ${t1Token}` } });
+    if (!sList.data.data.find(s => s.id === sId)) {
+      console.log('✅ PASS: Deleted supplier not in list.');
+    } else {
+      console.log('❌ FAIL: Deleted supplier still in list!');
+    }
+
     console.log('\n🎉 ALL EDGE CASE TESTS PASSED!');
 
   } catch (error) {
