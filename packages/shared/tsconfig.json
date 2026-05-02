@@ -5,5 +5,5 @@
     "rootDir": "./",
     "declaration": true
   },
-  "include": ["api.ts", "index.ts"]
+  "include": ["api.ts", "index.ts", "types.ts"]
 }

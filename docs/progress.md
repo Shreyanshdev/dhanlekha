@@ -4,10 +4,10 @@
 
 ---
 
-## Current Sprint: Sprint 0 — Project Setup & Environment
+## Current Sprint: Sprint 2 — User Management & Authentication
 **Status:** ✅ Complete
-**Started:** 2026-05-01
-**Completed:** 2026-05-01
+**Started:** 2026-05-02
+**Completed:** 2026-05-02
 
 ---
 
@@ -58,10 +58,38 @@
 ---
 
 ### Sprint 1: Multi-Tenant & Subscription System
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Build the SaaS backbone — tenant management and feature gating APIs.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Create `plans`, `feature_flags`, `plan_features` tables | ✅ Done | Migration: `20260501104800_init_saas_schema.ts` |
+| 2 | Create `tenants`, `users` tables with multi-tenant design | ✅ Done | UUID PKs, soft-delete, tenant_id FK |
+| 3 | Create `tenant_overrides`, `usage_tracking`, `subscriptions` | ✅ Done | Feature gating infrastructure |
+| 4 | Seed default plans (Starter/Growth/Enterprise) | ✅ Done | Seed: `001_seed_saas_plans.ts` |
+| 5 | Seed feature flags and plan_features | ✅ Done | max_invoices, max_users, enable_api, enable_ai |
+| 6 | `POST /api/v1/auth/register` — create tenant + admin | ✅ Done | Atomic transaction, bcrypt hashing |
+| 7 | `GET /api/v1/tenants/me` — current tenant profile | ✅ Done | JWT auth required |
+| 8 | `PATCH /api/v1/tenants/me` — update tenant profile | ✅ Done | Zod validation |
+
+---
 
 ### Sprint 2: User Management & Authentication
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Secure multi-user environment with JWT auth and role-based access.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Create `settings`, `invoice_sequences` tables | ✅ Done | Migration: `20260502053500_sprint2_settings_sequences.ts` |
+| 2 | `POST /api/v1/auth/login` — authenticate, return JWT | ✅ Done | Cross-tenant email lookup, bcrypt verify, JWT sign |
+| 3 | Role middleware: `authorize('admin')` | ✅ Done | `authorize.middleware.ts` — factory pattern |
+| 4 | `GET /api/v1/users` — list staff (admin only) | ✅ Done | Tenant-scoped, never exposes password_hash |
+| 5 | `POST /api/v1/users` — create staff user (admin only) | ✅ Done | Duplicate email check per tenant |
+| 6 | `PATCH /api/v1/users/:id` — update user (admin only) | ✅ Done | Last-admin protection, email uniqueness |
+| 7 | `DELETE /api/v1/users/:id` — soft-delete (admin only) | ✅ Done | Cannot delete last admin |
+| 8 | Zod validation schemas for all endpoints | ✅ Done | createUserSchema, updateUserSchema, userIdParamSchema |
+| 9 | Shared types expanded (UserPublic, Setting, etc.) | ✅ Done | `packages/shared/types.ts` |
+| 10 | Postman collection updated with all endpoints | ✅ Done | Login auto-saves JWT to collection variable |
 
 ### Sprint 3: Product & Inventory Management
 **Status:** ⬜ Not Started
@@ -123,7 +151,7 @@
 
 | Phase | Sprints | Status |
 |-------|---------|--------|
-| Phase 1: Foundation | 0–2 | 🔄 In Progress (0 ✅) |
+| Phase 1: Foundation | 0–2 | ✅ Complete (0 ✅, 1 ✅, 2 ✅) |
 | Phase 2: Core ERP | 3–10 | ⬜ Not Started |
 | Phase 3: System Features | 11–14 | ⬜ Not Started |
 | Phase 4: Performance & Production | 15–16 | ⬜ Not Started |

@@ -1,0 +1,223 @@
+{
+	"info": {
+		"_postman_id": "c1f39c20-80a5-420a-8a50-61ccf28db0b7",
+		"name": "DhanLekha ERP API",
+		"description": "Complete API Collection for DhanLekha ERP Backend — Sprint 1 & 2",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Server Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/health",
+							"host": ["{{BASE_URL}}"],
+							"path": ["health"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register Tenant",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tenantName\": \"Super Mart\",\n    \"tenantEmail\": \"admin@supermart.com\",\n    \"phone\": \"9876543210\",\n    \"planId\": \"starter\",\n    \"userName\": \"Admin\",\n    \"password\": \"securepassword123\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/auth/register",
+							"host": ["{{BASE_URL}}"],
+							"path": ["auth", "register"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.success && jsonData.data.token) {",
+									"    pm.collectionVariables.set('JWT_TOKEN', jsonData.data.token);",
+									"    console.log('Token auto-saved to JWT_TOKEN variable');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@supermart.com\",\n    \"password\": \"securepassword123\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/auth/login",
+							"host": ["{{BASE_URL}}"],
+							"path": ["auth", "login"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Tenants",
+			"item": [
+				{
+					"name": "Get My Tenant Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" }
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/tenants/me",
+							"host": ["{{BASE_URL}}"],
+							"path": ["tenants", "me"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Tenant Profile",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Super Mart Premium\",\n    \"phone\": \"9876543210\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/tenants/me",
+							"host": ["{{BASE_URL}}"],
+							"path": ["tenants", "me"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users (Admin Only)",
+			"item": [
+				{
+					"name": "List Staff Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" }
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/users",
+							"host": ["{{BASE_URL}}"],
+							"path": ["users"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Staff User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Cashier One\",\n    \"email\": \"cashier1@supermart.com\",\n    \"password\": \"cashier123\",\n    \"role\": \"cashier\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/users",
+							"host": ["{{BASE_URL}}"],
+							"path": ["users"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Staff User",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Cashier One Updated\",\n    \"role\": \"cashier\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/users/{{USER_ID}}",
+							"host": ["{{BASE_URL}}"],
+							"path": ["users", "{{USER_ID}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Staff User",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" }
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/users/{{USER_ID}}",
+							"host": ["{{BASE_URL}}"],
+							"path": ["users", "{{USER_ID}}"]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "BASE_URL",
+			"value": "http://localhost:3001/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "JWT_TOKEN",
+			"value": "your_jwt_token_here",
+			"type": "string"
+		},
+		{
+			"key": "USER_ID",
+			"value": "paste_user_id_here",
+			"type": "string"
+		}
+	]
+}

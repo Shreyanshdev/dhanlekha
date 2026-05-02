@@ -5,7 +5,9 @@ import { AppError } from '../utils/errors';
  * Catches all errors thrown in controllers/services and returns
  * a standardised JSON response. Internal details are never exposed.
  */
-function errorHandler(err: any, req: any, res: any, _next: any) {
+import type { Request, Response, NextFunction } from 'express';
+
+function errorHandler(err: any, req: Request, res: Response, _next: NextFunction) {
   // Default to 500 if not a known AppError
   const statusCode = err.statusCode || 500;
   const code = err.code || 'INTERNAL_ERROR';

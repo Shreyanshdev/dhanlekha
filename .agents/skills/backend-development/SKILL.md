@@ -1,11 +1,11 @@
 ---
 name: backend-development
-description: Guides backend implementation using Node.js with modular architecture, project structure, middleware patterns, and best practices for the Antigravity ERP system. Use when writing APIs, services, or backend modules.
+description: Guides backend implementation using Node.js/TypeScript with modular architecture, repository pattern, and best practices for the DhanLekha ERP system. Use when writing APIs, services, or backend modules.
 ---
 
 # Backend Development Skill
 
-Defines the architecture, patterns, and rules for all backend development in the Antigravity ERP system.
+Defines the architecture, patterns, and **mandatory rules** for all backend development in the DhanLekha ERP system.
 
 ---
 
@@ -24,223 +24,274 @@ Defines the architecture, patterns, and rules for all backend development in the
 
 | Layer        | Technology              |
 |-------------|-------------------------|
+| Language    | TypeScript (strict)     |
 | Runtime     | Node.js                 |
-| Framework   | Express.js (or Fastify) |
-| Local DB    | SQLite                  |
+| Framework   | Express.js              |
+| Local DB    | SQLite (better-sqlite3) |
 | Cloud DB    | PostgreSQL              |
+| Query Layer | Knex.js                 |
 | Cache       | Redis                   |
 | Queue       | BullMQ (Node.js + Redis)|
-| Auth        | JWT-based               |
-| Monorepo    | Turborepo (or Nx)       |
+| Auth        | JWT + bcrypt            |
+| Validation  | Zod                     |
+| HTTP Client | Axios                   |
+| Monorepo    | Turborepo               |
 | Container   | Docker                  |
 
 ---
 
-## Project Structure (Monorepo)
+## Project Structure
 
 ```
-/apps
-  /backend          ← Node.js Express server
-  /frontend         ← Next.js + Electron
-  /ai-service       ← Python FastAPI
-
-/packages
-  /db               ← Database schemas, migrations, seeds
-  /shared           ← Shared types, constants, utilities
-  /utils            ← Helper functions
-```
-
----
-
-## Backend Module Structure
-
-Each feature module follows a **layered architecture**:
-
-```
-/src
-  /modules
-    /products
-      product.controller.js    ← Route handlers (req/res)
-      product.service.js       ← Business logic
-      product.repository.js    ← Database queries
-      product.validator.js     ← Input validation (Joi/Zod)
-      product.routes.js        ← Express router definitions
-    /invoices
-      invoice.controller.js
-      invoice.service.js
-      invoice.repository.js
-      invoice.validator.js
-      invoice.routes.js
-    /payments
-    /customers
-    /inventory
-    /ledger
-    /auth
-    /sync
-    /analytics
-    ...
-
-  /middleware
-    auth.middleware.js          ← JWT verification
-    tenant.middleware.js        ← tenant_id injection
-    featureGate.middleware.js   ← Plan/quota enforcement
-    role.middleware.js          ← Role-based access
-    errorHandler.middleware.js  ← Global error handler
-    requestLogger.middleware.js ← Request logging
-
-  /config
-    database.js
-    redis.js
-    env.js
-
-  /jobs
-    syncWorker.js              ← BullMQ sync processor
-    metricsAggregator.js       ← Daily metrics job
-    ledgerSnapshot.js          ← Nightly ledger snapshots
-    alertGenerator.js          ← Low stock / payment due alerts
-
-  /utils
-    uuid.js                    ← UUID generation (client-side compat)
-    decimal.js                 ← Safe decimal arithmetic
-    response.js                ← Standard response helpers
-
-  app.js                       ← Express app setup
-  server.js                    ← HTTP server start
+/apps/backend/src/
+  ├── config/
+  │   ├── env.ts              # Environment variables
+  │   ├── database.ts         # Knex DB connection
+  │   ├── knexfile.ts         # Knex config (SQLite + PostgreSQL)
+  │   └── redis.ts            # Redis client (graceful failure)
+  │
+  ├── middleware/
+  │   ├── auth.middleware.ts           # JWT verification → sets req.user
+  │   ├── authorize.middleware.ts      # Role-based access: authorize('admin')
+  │   ├── errorHandler.middleware.ts   # Global error handler
+  │   ├── requestLogger.middleware.ts  # Request logging
+  │   └── validate.middleware.ts       # Zod validation factory
+  │
+  ├── repositories/                    # ⚠️ THE ONLY LAYER THAT TOUCHES THE DB
+  │   ├── base.repo.ts                # Base class with tenant isolation
+  │   ├── tenant.repo.ts              # Tenant queries
+  │   ├── user.repo.ts                # User queries
+  │   └── {entity}.repo.ts            # One repo per entity
+  │
+  ├── modules/
+  │   ├── auth/
+  │   │   ├── auth.validator.ts        # Zod schemas
+  │   │   ├── auth.service.ts          # Business logic
+  │   │   ├── auth.controller.ts       # Request/response handling
+  │   │   └── auth.routes.ts           # Express router
+  │   ├── users/
+  │   ├── tenants/
+  │   ├── health/
+  │   └── {feature}/                   # Same 4-file pattern per module
+  │
+  ├── database/
+  │   ├── transaction.ts               # withTransaction() helper
+  │   ├── migrations/                  # Knex migrations
+  │   └── seeds/                       # Knex seed data
+  │
+  └── utils/
+      ├── errors.ts                    # Error classes (400/401/403/404/409/422)
+      └── response.ts                  # Standard response helpers
 ```
 
 ---
 
-## Layer Responsibilities
+## ⚠️ CRITICAL: Repository Pattern (MANDATORY)
 
-### Controller Layer
-- Parse request params, body, query
-- Call service layer
-- Return standardised JSON response
-- **Never** contain business logic or raw SQL
+### The Iron Rule
 
-```javascript
-// product.controller.js
-async function createProduct(req, res, next) {
+> **Services NEVER import `db` or `database` directly.**
+> **ALL database access goes through a Repository.**
+
+This is the single most important architectural rule in the codebase.
+
+### Data Flow
+
+```
+Controller → Service → Repository → Knex (database)
+     ↓          ↓           ↓
+  req/res    business     SQL queries
+  parsing    logic        tenant isolation
+```
+
+### What Goes Where
+
+| Layer | Imports `db`? | Has business logic? | Touches `req/res`? |
+|-------|:---:|:---:|:---:|
+| Controller | ❌ | ❌ | ✅ |
+| Service | ❌ | ✅ | ❌ |
+| Repository | ✅ | ❌ | ❌ |
+
+### BaseRepository
+
+Every entity repository extends `BaseRepository<T>` which provides:
+
+```typescript
+class BaseRepository<T> {
+  getQuery(trx?)      // Tenant-scoped + is_deleted=false (DEFAULT)
+  getRawQuery(trx?)   // Cross-tenant (login only, RARE)
+  getInsertQuery(trx?) // Raw insert builder
+
+  findById(id, trx?)
+  findAll(trx?)
+  findAllSelect(columns, trx?)  // Safe column projection
+  findByIdSelect(id, columns, trx?)
+  create(data, trx?)
+  update(id, data, trx?)
+  softDelete(id, trx?)
+  count(filters, trx?)
+}
+```
+
+### Creating a New Repository
+
+```typescript
+// repositories/product.repo.ts
+import { BaseRepository } from './base.repo';
+import type { Product } from '@dhanlekha/shared';
+
+export class ProductRepository extends BaseRepository<Product> {
+  constructor(tenantId: string) {
+    super(tenantId, 'products');
+  }
+
+  async findByBarcode(barcode: string, trx?) {
+    return await this.getQuery(trx).where({ barcode }).first();
+  }
+
+  async search(query: string, trx?) {
+    return await this.getQuery(trx)
+      .where('name', 'like', `%${query}%`)
+      .orderBy('name');
+  }
+}
+```
+
+### Using a Repository in a Service
+
+```typescript
+// modules/products/products.service.ts
+import { ProductRepository } from '../../repositories/product.repo';
+import { NotFoundError } from '../../utils/errors';
+
+export async function getProductByBarcode(tenantId: string, barcode: string) {
+  const repo = new ProductRepository(tenantId);
+  const product = await repo.findByBarcode(barcode);
+  if (!product) throw new NotFoundError('Product');
+  return product;
+}
+```
+
+### ❌ NEVER DO THIS
+
+```typescript
+// ❌ WRONG — service directly imports db
+import db from '../../config/database';
+const user = await db('users').where({ id }).first();
+
+// ❌ WRONG — controller contains business logic
+if (adminCount <= 1) throw new Error('...');
+
+// ❌ WRONG — repository contains business logic
+if (user.role === 'admin') { /* business rule check */ }
+```
+
+---
+
+## Module Structure (4-File Pattern)
+
+Every feature module follows this exact pattern:
+
+### 1. Validator (`{feature}.validator.ts`)
+```typescript
+import { z } from 'zod';
+
+export const createProductSchema = z.object({
+  name: z.string().min(2).max(200),
+  barcode: z.string().min(3).max(50),
+  // ...
+});
+```
+
+### 2. Service (`{feature}.service.ts`)
+```typescript
+// ✅ Imports repositories, NOT db
+import { ProductRepository } from '../../repositories/product.repo';
+
+export async function createProduct(tenantId: string, data: any) {
+  const repo = new ProductRepository(tenantId);
+  // Business logic here
+}
+```
+
+### 3. Controller (`{feature}.controller.ts`)
+```typescript
+export async function create(req, res, next) {
   try {
-    const product = await productService.create(req.tenantId, req.body, req.userId);
-    res.status(201).json({ success: true, data: product });
+    const tenantId = req.user!.tenantId;
+    const result = await service.createProduct(tenantId, req.body);
+    return created(res, result);
   } catch (error) {
     next(error);
   }
 }
 ```
 
-### Service Layer
-- Contains all business logic
-- Orchestrates repository calls
-- Manages transactions
-- Enforces business rules (credit limits, stock checks, quota)
-- **Never** access `req` or `res` directly
-
-```javascript
-// invoice.service.js
-async function createInvoice(tenantId, invoiceData, userId) {
-  return db.transaction(async (trx) => {
-    // 1. Quota check
-    // 2. Invoice number generation (SELECT FOR UPDATE)
-    // 3. Line item calculation
-    // 4. Inventory updates
-    // 5. Ledger entry
-    // 6. Usage tracking increment
-  });
-}
+### 4. Routes (`{feature}.routes.ts`)
+```typescript
+router.post('/', requireAuth, authorize('admin'), validate(schema), controller.create);
 ```
-
-### Repository Layer
-- Raw database queries only
-- One method per query
-- Always filter by `tenant_id`
-- Always exclude `deleted_at IS NOT NULL` in default scope
-- Returns plain data objects
-
-```javascript
-// product.repository.js
-async function findByTenant(tenantId, { page, limit, search, category }) {
-  return db('products')
-    .where({ tenant_id: tenantId })
-    .whereNull('deleted_at')
-    .modify((qb) => {
-      if (search) qb.where('name', 'like', `%${search}%`);
-      if (category) qb.where('category', category);
-    })
-    .orderBy('created_at', 'desc')
-    .paginate({ perPage: limit, currentPage: page });
-}
-```
-
-### Validator Layer
-- Validate all input before it reaches the service
-- Use Joi or Zod schemas
-- Return 400 with specific field errors on failure
 
 ---
 
 ## Middleware Chain
 
-Every request passes through this middleware stack in order:
+```
+requestLogger → requireAuth → authorize(role) → validate(schema) → controller → errorHandler
+```
 
-```
-1. requestLogger     → Log method, URL, timestamp
-2. authenticate      → Verify JWT, set req.userId
-3. resolveTenant     → Set req.tenantId from user record
-4. featureGate(key)  → Check plan quota (applied per-route)
-5. authorize(role)   → Check req.user.role (applied per-route)
-6. validate(schema)  → Validate req.body/query
-7. controller        → Handle request
-8. errorHandler      → Catch and format all errors
-```
+| Middleware | Purpose |
+|-----------|---------|
+| `requestLogger` | Log method, URL, status, response time |
+| `requireAuth` | Verify JWT → set `req.user.userId`, `req.user.tenantId`, `req.user.role` |
+| `authorize(roles)` | Check `req.user.role` is in allowed roles |
+| `validate(schema)` | Zod-validate `req.body` / `req.params` / `req.query` |
+| `errorHandler` | Catch all errors, format standard response |
 
 ---
 
 ## Multi-Tenant Rules
 
-- **Every query MUST filter by `tenant_id`** — no exceptions
-- `tenant_id` comes from JWT/auth middleware, never from request body
-- Cross-tenant data access is a **critical security bug**
-- All repository methods take `tenantId` as first parameter
-- Default query scope: `WHERE tenant_id = ? AND deleted_at IS NULL`
+- **Every query MUST be tenant-scoped** — handled automatically by `BaseRepository.getQuery()`
+- `tenant_id` comes from JWT (`req.user.tenantId`), **never from request body**
+- Cross-tenant access is a **critical security bug** — only `getRawQuery()` bypasses scope (login only)
+- The `tenants` and `plans` tables are global — their repos override `getQuery()`
 
 ---
 
 ## Transaction Rules
 
-Use database transactions for any operation that modifies multiple tables:
+Use `withTransaction()` for any operation that modifies multiple tables:
 
-- **Invoice creation** — invoice + items + inventory + logs + ledger + usage
-- **Payment recording** — payment + allocations + invoice updates + ledger
-- **Purchase recording** — purchase + items + inventory + logs + batches
-- **Stock adjustment** — inventory + logs
+```typescript
+import { withTransaction } from '../../database/transaction';
 
-```javascript
-await db.transaction(async (trx) => {
-  // All queries inside use trx
-  await trx('invoices').insert(invoiceData);
-  await trx('invoice_items').insert(items);
-  await trx('inventory').where({ product_id }).decrement('total_quantity', qty);
-  // If any fails, entire transaction rolls back
+return await withTransaction(async (trx) => {
+  const repo = new ProductRepository(tenantId);
+  await repo.create(data, trx);        // Pass trx to every repo call
+  await inventoryRepo.create(inv, trx); // Same transaction
 });
 ```
+
+Required for: Invoice creation, Payment recording, Purchase recording, Stock adjustment.
+
+---
+
+## Shared Types
+
+All TypeScript interfaces live in `packages/shared/types.ts`:
+
+- Every entity has a **full interface** matching the DB schema (e.g., `User`)
+- Sensitive entities also have a **public interface** (e.g., `UserPublic` — no `password_hash`)
+- Services return the **public** interface to controllers
+- Repositories may return the **full** interface for internal checks
 
 ---
 
 ## Error Handling
 
-### Structured Error Classes
-
-```javascript
-class AppError extends Error {
-  constructor(message, statusCode, code) {
-    super(message);
-    this.statusCode = statusCode;
-    this.code = code;
-  }
-}
-
+```typescript
+class AppError extends Error { statusCode, code }
 class ValidationError extends AppError { /* 400 */ }
 class AuthenticationError extends AppError { /* 401 */ }
 class ForbiddenError extends AppError { /* 403 */ }
@@ -249,85 +300,21 @@ class ConflictError extends AppError { /* 409 */ }
 class BusinessRuleError extends AppError { /* 422 */ }
 ```
 
-### Global Error Handler
-
-```javascript
-function errorHandler(err, req, res, next) {
-  const statusCode = err.statusCode || 500;
-  const response = {
-    success: false,
-    error: {
-      code: err.code || 'INTERNAL_ERROR',
-      message: statusCode === 500 ? 'Internal server error' : err.message
-    }
-  };
-  if (statusCode === 500) logger.error(err); // Log full stack for 500s
-  res.status(statusCode).json(response);
-}
-```
-
-**Rules:**
-- Never expose internal errors (stack traces, SQL errors) to client
-- Log all 500 errors with full context
-- Use specific error codes: `INSUFFICIENT_STOCK`, `CREDIT_LIMIT_EXCEEDED`, `QUOTA_EXCEEDED`
+Rules:
+- Never expose internal errors to client
+- Use specific codes: `INSUFFICIENT_STOCK`, `CREDIT_LIMIT_EXCEEDED`, `QUOTA_EXCEEDED`
+- All 500s are logged with full stack trace
 
 ---
 
-## UUID Generation
+## Checklist for New Features
 
-All IDs are UUIDs generated **client-side** (for offline-first):
-
-```javascript
-import { v4 as uuidv4 } from 'uuid';
-const id = uuidv4();
-```
-
-Never use auto-increment IDs. The app must work without server round-trips for ID generation.
-
----
-
-## Soft Deletes
-
-Never use `DELETE FROM`. Always set `deleted_at = new Date()`:
-
-```javascript
-await trx('products')
-  .where({ id, tenant_id: tenantId })
-  .update({ deleted_at: new Date() });
-```
-
-Tables with soft delete: `tenants`, `users`, `customers`, `suppliers`, `products`, `invoices`, `payments`, `purchases`, `expenses`, `offers`.
-
----
-
-## Background Jobs (BullMQ)
-
-| Job                  | Schedule     | Purpose                           |
-|----------------------|-------------|-----------------------------------|
-| syncWorker           | On trigger  | Process sync_queue to cloud       |
-| metricsAggregator    | Daily 00:00 | Generate daily_metrics rows       |
-| ledgerSnapshot       | Daily 00:00 | Generate ledger_snapshots         |
-| alertGenerator       | Every 15min | Check low stock, payment due      |
-| usageReset           | Monthly 1st | Reset usage_tracking counters     |
-
----
-
-## Performance Requirements
-
-From SRS non-functional requirements:
-
-- Invoice generation: **< 1 second**
-- Product search: **< 200ms**
-- Barcode lookup: **< 50ms** (near-instant)
-- Use indexed queries (see database-enforcement skill)
-- Use Redis caching for frequently accessed data (settings, feature flags)
-
----
-
-## Logging
-
-- Log all requests (method, URL, response time, status code)
-- Log all errors with full stack trace
-- Log all transaction boundaries (begin, commit, rollback)
-- Log all sync operations
-- **Never log** passwords, tokens, or sensitive customer data
+- [ ] Create shared types in `packages/shared/types.ts`
+- [ ] Create migration in `database/migrations/`
+- [ ] Create repository in `repositories/{entity}.repo.ts` extending `BaseRepository`
+- [ ] Create module with 4 files: validator, service, controller, routes
+- [ ] Service imports **repository only** (never `db`)
+- [ ] Wire routes in `app.ts`
+- [ ] Update Postman collection in `api-testing/`
+- [ ] Run `npx tsc --noEmit` — must pass with zero errors
+- [ ] Test all endpoints via curl or Postman

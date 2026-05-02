@@ -1,5 +1,6 @@
 import path from 'path';
-require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+import dotenv from 'dotenv';
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const env = {
   // Server
