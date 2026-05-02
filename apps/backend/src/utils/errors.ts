@@ -59,6 +59,13 @@ class BusinessRuleError extends AppError {
   }
 }
 
+/** 400 — General bad request */
+class BadRequestError extends AppError {
+  constructor(message: string = 'Bad request') {
+    super(message, 400, 'BAD_REQUEST');
+  }
+}
+
 export {
   AppError,
   ValidationError,
@@ -67,4 +74,5 @@ export {
   NotFoundError,
   ConflictError,
   BusinessRuleError,
+  BadRequestError,
 };

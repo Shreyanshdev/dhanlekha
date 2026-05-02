@@ -178,12 +178,45 @@ export interface InventoryLog {
 export interface Invoice {
   id: string;
   tenant_id: string;
+  branch_id: string;
   customer_id: string | null;
-  total_amount: number;
-  status: 'draft' | 'paid' | 'cancelled';
+  created_by: string | null;
+  invoice_number: string;
+  subtotal: number;
+  tax_amount: number;
+  discount_amount: number;
+  final_amount: number;
+  amount_paid: number;
+  amount_due: number;
+  status: 'paid' | 'partial' | 'unpaid' | 'cancelled';
+  note: string | null;
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface InvoiceItem {
+  id: string;
+  tenant_id: string;
+  invoice_id: string;
+  product_id: string | null;
+  quantity: number;
+  unit_price: number;
+  gst_rate: number;
+  discount_amount: number;
+  total: number;
+}
+
+export interface CustomerLedger {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  entry_type: 'invoice' | 'payment' | 'adjustment';
+  reference_id: string;
+  debit: number;
+  credit: number;
+  running_balance: number;
+  created_at: string;
 }
 
 // ─── API Response Contracts ───
