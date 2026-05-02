@@ -189,27 +189,50 @@ await api.delete(`/customers/${id}`);
 **Objective:** Build product catalogue and stock tracking APIs.
 
 **Scope — Backend APIs:**
-- `GET /api/v1/products` — list products (paginated, searchable)
+- `GET /api/v1/products` — list products (paginated, searchable) + stock for requesting user's branch
 - `GET /api/v1/products/barcode/:code` — barcode scanner lookup (< 50ms)
-- `POST /api/v1/products` — create product + inventory row
+- `POST /api/v1/products` — create product (tenant-wide) + inventory row (for active branch)
 - `PUT /api/v1/products/:id` — update product
 - `DELETE /api/v1/products/:id` — soft-delete product
-- `GET /api/v1/inventory` — list stock levels
-- `PATCH /api/v1/inventory/:productId` — manual stock adjustment
+- `GET /api/v1/inventory` — list stock levels (branch-scoped)
+- `PATCH /api/v1/inventory/:productId` — manual stock adjustment (branch-scoped)
+- `POST /api/v1/inventory/enable` — enable existing product for another branch
 
 **Database Tables:**
 - `products` — catalogue (name, barcode, GST rate, unit)
-- `inventory` — summary stock per product (qty, prices, min_stock_alert)
-- `inventory_batches` — optional batch tracking (FEFO)
-- `inventory_logs` — immutable audit trail of all stock movements
+- `inventory` — summary stock per product per branch (branch_id + product_id UNIQUE)
+- `inventory_batches` — optional batch tracking (FEFO) per branch
+- `inventory_logs` — immutable audit trail of all stock movements per branch
 
 **Key Logic:**
 - Product + inventory created together (product is catalogue, inventory is stock)
-- Barcode lookup must use `idx_products_barcode` index
+- Barcode lookup must use `idx_products_barcode` index and filter by `branch_id`
 - Manual adjustments create `inventory_logs` entry (change_type = 'adjustment')
 - Stock movement logging: every insert to inventory_logs is append-only, never update
 
-**Outcome:** Complete product + inventory API with audit trail.
+**Outcome:** Complete product + inventory API with branch-scoped audit trail.
+
+---
+
+### Sprint 3.5: Branch Management (Backend)
+
+**Objective:** Implement the Multi-Branch architecture to allow a single tenant to manage multiple physical stores.
+
+**Scope — Backend APIs:**
+- `POST /api/v1/branches` — create branch (admin only, validates against `max_branches` quota)
+- `GET /api/v1/branches` — list all branches for the tenant
+- `PATCH /api/v1/branches/:id` — update branch details
+- `DELETE /api/v1/branches/:id` — soft-delete branch
+
+**Database Tables:**
+- `branches` — physical store locations
+
+**Key Logic:**
+- Introduce `BranchScopedRepository` extending `BaseRepository`.
+- Refactor all branch-specific entities (`users`, `inventory`, `invoices`, `purchases`, etc.) to use `BranchScopedRepository`.
+- Ensure JWT token includes `branchId`. Admins can specify `X-Branch-Id` header to operate across branches.
+
+**Outcome:** System fully supports multi-store operations under a single subscription.
 
 ---
 
@@ -641,7 +664,7 @@ await api.delete(`/customers/${id}`);
 | Phase   | Sprints  | Focus                                        |
 |---------|----------|----------------------------------------------|
 | Phase 1 | 0–2      | Backend infrastructure, auth, SaaS           |
-| Phase 2 | 3–10     | Core ERP backend APIs (products → offers)    |
+| Phase 2 | 3–10     | Core ERP backend APIs (products, branches, billing) |
 | Phase 3 | 11–14    | System features backend (sync, alerts, AI)   |
 | Phase 4 | 15–16    | Backend performance & production readiness   |
 | Phase 5 | 17–20    | Frontend (only after backend is complete)    |

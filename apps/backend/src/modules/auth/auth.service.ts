@@ -5,6 +5,7 @@ import { ConflictError, AuthenticationError } from '../../utils/errors';
 import { withTransaction } from '../../database/transaction';
 import { TenantRepository } from '../../repositories/tenant.repo';
 import { UserRepository } from '../../repositories/user.repo';
+import { BranchRepository } from '../../repositories/branch.repo';
 import env from '../../config/env';
 
 /**
@@ -25,6 +26,7 @@ export async function registerTenant(data: any) {
 
     const tenantId = uuidv4();
     const userId = uuidv4();
+    const branchId = uuidv4(); // ── NEW: Default Branch ──
 
     // Create Tenant
     await tenantRepo.create({
@@ -36,25 +38,41 @@ export async function registerTenant(data: any) {
       status: 'active',
     } as any);
 
+    // ── CREATE DEFAULT BRANCH ──
+    const branchRepo = new BranchRepository(tenantId, trx);
+    await branchRepo.create({
+      id: branchId,
+      tenant_id: tenantId,
+      name: 'Main Store',
+      address: null,
+      phone: phone || null,
+      is_active: true,
+      is_deleted: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
     // Hash Password
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Create Admin User (via UserRepository scoped to the new tenant)
+    // Create Admin User (assigned to Main Store)
     const userRepo = new UserRepository(tenantId, trx);
     await userRepo.create({
       id: userId,
+      tenant_id: tenantId,
+      branch_id: branchId, // assigned to default branch
       name: userName,
       email: tenantEmail,
       password_hash: passwordHash,
       role: 'admin',
     } as any);
 
-    // Create default invoice sequence (global insert via trx)
-    // NOTE: invoice_sequences doesn't have its own repo yet — will get one in Sprint 5
+    // Create default invoice sequence (linked to branch)
     await trx('invoice_sequences').insert({
       id: uuidv4(),
       tenant_id: tenantId,
+      branch_id: branchId, // linked to branch
       prefix: 'INV',
       next_number: 1,
     });
@@ -96,12 +114,13 @@ export async function login(data: any) {
   }
 
   // Generate JWT
-  const token = jwt.sign(
-    {
-      userId: user.id,
-      tenantId: user.tenant_id,
-      role: user.role,
-    },
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        tenantId: user.tenant_id,
+        branchId: user.branch_id,
+        role: user.role,
+      },
     env.jwt.secret,
     { expiresIn: env.jwt.expiresIn as any }
   );
@@ -114,6 +133,7 @@ export async function login(data: any) {
       email: user.email,
       role: user.role,
       tenantId: user.tenant_id,
+      branchId: user.branch_id,
     },
   };
 }

@@ -3,7 +3,7 @@ import { BaseRepository } from './base.repo';
 import type { User, UserPublic } from '@dhanlekha/shared';
 
 /** Columns safe to return to the client (never expose password_hash) */
-const SAFE_COLUMNS: Array<keyof UserPublic> = ['id', 'tenant_id', 'name', 'email', 'role', 'created_at'];
+const SAFE_COLUMNS: Array<keyof UserPublic> = ['id', 'tenant_id', 'branch_id', 'name', 'email', 'role', 'created_at'];
 
 /**
  * UserRepository — handles queries against the `users` table.

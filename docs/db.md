@@ -65,6 +65,12 @@ This document is the authoritative reference for the database schema powering th
 |Expenses|expenses|Shop operating costs|
 |System|alerts, sync\_queue, daily\_metrics, product\_ai\_data|Notifications, offline sync, reporting, AI enrichment|
 
+### **1.2 Multi-Branch Architecture**
+The system uses a **1 Tenant = N Branches** model. 
+- **Shared**: Products catalog, customers, suppliers, settings, and subscription limits are scoped to `tenant_id` and shared across all branches.
+- **Isolated**: Inventory stock levels, prices, invoices, purchases, and expenses are scoped to `branch_id`.
+- **Users**: Cashiers are assigned to a specific `branch_id`. Admins can access all branches.
+
 
 # **2. Global Conventions**
 ## **2.1 Primary Keys**
@@ -211,13 +217,29 @@ The root entity of the entire system. Every single piece of business data belong
 |**created\_at**|timestamp|NOT NULL|When this shop registered|
 |**updated\_at**|timestamp|NOT NULL|Last profile update|
 |**deleted\_at**|timestamp|nullable|Soft delete — set when shop account is closed|
-### **4.2  users**
+
+### **4.2  branches**
+Physical store locations or distinct branches under one tenant. Allows isolated inventory and billing.
+
+|**Field Name**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK|Unique identifier|
+|**tenant\_id**|uuid|FK → tenants.id|Which shop this branch belongs to|
+|**name**|string|NOT NULL|Branch name — e.g. 'Kanpur Main Store'|
+|**address**|text|nullable|Branch specific address|
+|**phone**|string|nullable|Branch contact number|
+|**is\_active**|boolean|DEFAULT true|Set false to disable operations at this branch|
+|**created\_at**|timestamp|NOT NULL|When this branch was added|
+|**deleted\_at**|timestamp|nullable|Soft delete|
+
+### **4.3  users**
 Staff accounts within a shop. The owner is role='admin'. Cashiers are role='cashier'. All actions (invoice creation, stock updates, expense recording) are tied to a user for full accountability.
 
 |**Field Name**|**Type**|**Constraint**|**Description**|
 | :- | :- | :- | :- |
 |**id**|uuid|PK|Unique identifier|
 |**tenant\_id**|uuid|FK → tenants.id|Which shop this staff member belongs to|
+|**branch_id**|uuid|FK → branches.id|Which branch this cashier works at (nullable for admins)|
 |**name**|string|NOT NULL|Full name|
 |**role**|string|NOT NULL|'admin' (full access) or 'cashier' (billing only)|
 |**password\_hash**|string|NOT NULL|bcrypt hash. Never stored in plain text|
@@ -229,20 +251,21 @@ Staff accounts within a shop. The owner is role='admin'. Cashiers are role='cash
 
 |*Role permissions: admin can access all modules including reports, settings, and user management. cashier can only create invoices, accept payments, and view their own today's sales.*|
 | :- |
-### **4.3  invoice\_sequences**
+### **4.4  invoice\_sequences**
 Solves the invoice number duplication problem. Each tenant owns exactly one row here. The backend locks this row (SELECT FOR UPDATE), reads current\_number, increments it, generates the invoice number (e.g. INV-0042), saves the invoice, then releases the lock — guaranteeing uniqueness even with multiple concurrent cashiers.
 
 |**Field Name**|**Type**|**Constraint**|**Description**|
 | :- | :- | :- | :- |
 |**id**|uuid|PK|Unique identifier|
-|**tenant\_id**|uuid|FK → tenants.id UNIQUE|One sequence per tenant — enforced by UNIQUE constraint|
-|**prefix**|string|DEFAULT 'INV'|Configurable prefix — vendor can change to 'BILL', 'RC', etc.|
+|**tenant\_id**|uuid|FK → tenants.id|Which tenant this counter belongs to|
+|**branch\_id**|uuid|FK → branches.id UNIQUE|One sequence per branch — enforced by UNIQUE constraint|
+|**prefix**|string|DEFAULT 'INV'|Configurable prefix — vendor can change to 'BILL', 'KNP-INV', etc.|
 |**current\_number**|integer|DEFAULT 0|Last used number. Next invoice gets current\_number + 1|
 |**updated\_at**|timestamp|NOT NULL|Timestamp of last number increment|
 
 |*Generated format: {prefix}-{current\_number padded to 4 digits}. Example: INV-0001, INV-0042, BILL-0153. Padding width is configurable in settings.*|
 | :- |
-### **4.4  settings**
+### **4.5  settings**
 Per-tenant key-value configuration store. Allows each shop to customize behaviour without schema changes. Example keys: invoice\_prefix, gst\_inclusive, currency\_symbol, low\_stock\_threshold\_default.
 
 |**Field Name**|**Type**|**Constraint**|**Description**|
@@ -311,8 +334,11 @@ Summary stock table. One row per product. Gives the quick answer to 'how many of
 |**Field Name**|**Type**|**Constraint**|**Description**|
 | :- | :- | :- | :- |
 |**id**|uuid|PK|Unique identifier|
-|**product\_id**|uuid|FK → products.id UNIQUE|One inventory row per product — enforced by UNIQUE constraint|
-|**total\_quantity**|decimal(10,3)|DEFAULT 0|Current stock. Decremented on sales, incremented on purchases|
+|**tenant_id**|uuid|FK → tenants.id|Tenant isolation|
+|**branch_id**|uuid|FK → branches.id|Which branch this stock belongs to|
+|**product_id**|uuid|FK → products.id|Which product|
+|*(Composite Unique)*| |UNIQUE(branch_id, product_id)|One inventory row per product per branch|
+|**total_quantity**|decimal(10,3)|DEFAULT 0|Current stock. Decremented on sales, incremented on purchases|
 |**purchase\_price**|decimal(10,2)|NOT NULL|Latest purchase cost — used for profit calculation|
 |**selling\_price**|decimal(10,2)|NOT NULL|Default selling price. Can be overridden per invoice item|
 |**min\_stock\_alert**|decimal(10,3)|DEFAULT 0|Alert fires when total\_quantity drops below this threshold|
@@ -323,7 +349,8 @@ Optional batch-level tracking. Each purchase can create a new batch with its own
 |**Field Name**|**Type**|**Constraint**|**Description**|
 | :- | :- | :- | :- |
 |**id**|uuid|PK|Unique identifier|
-|**product\_id**|uuid|FK → products.id|Which product this batch belongs to|
+|**product_id**|uuid|FK → products.id|Which product this batch belongs to|
+|**branch_id**|uuid|FK → branches.id|Which branch holds this batch|
 |**quantity**|decimal(10,3)|NOT NULL|Remaining quantity in this batch|
 |**purchase\_price**|decimal(10,2)|NOT NULL|What was paid for this specific batch|
 |**selling\_price**|decimal(10,2)|NOT NULL|Recommended selling price for this batch|
@@ -336,8 +363,9 @@ Immutable audit trail of every stock movement. Never updated — only appended. 
 |**Field Name**|**Type**|**Constraint**|**Description**|
 | :- | :- | :- | :- |
 |**id**|uuid|PK|Unique identifier|
-|**product\_id**|uuid|FK → products.id|Which product moved|
-|**user\_id**|uuid|FK → users.id|Which staff member triggered this movement|
+|**product_id**|uuid|FK → products.id|Which product moved|
+|**branch_id**|uuid|FK → branches.id|Which branch recorded movement|
+|**user_id**|uuid|FK → users.id|Which staff member triggered this movement|
 |**change\_type**|string|NOT NULL|'sale', 'purchase', 'adjustment', 'return', 'waste'|
 |**quantity\_change**|decimal(10,3)|NOT NULL|Positive for stock-in, negative for stock-out|
 |**reference\_id**|uuid|nullable|Links to the source document: invoice\_id for sales, purchase\_id for purchases|
@@ -352,7 +380,8 @@ The offers system handles how malls and modern retail stores manage promotions. 
 |**Field Name**|**Type**|**Constraint**|**Description**|
 | :- | :- | :- | :- |
 |**id**|uuid|PK|Unique identifier|
-|**tenant\_id**|uuid|FK → tenants.id|Which shop created this offer|
+|**tenant_id**|uuid|FK → tenants.id|Which shop created this offer|
+|**branch_id**|uuid|FK → branches.id (nullable)|If null, applies to all branches. If set, applies to specific branch|
 |**name**|string|NOT NULL|Offer display name — e.g. '10% off Dairy', 'Buy 2 Get 1 Free'|
 |**offer\_type**|string|NOT NULL|'flat', 'percentage', 'bogo', 'bundle' — see table below|
 |**discount\_value**|decimal(10,2)|NOT NULL|The discount amount or percentage. Meaning depends on offer\_type|
@@ -387,7 +416,8 @@ The central transaction table of the ERP. Every sale creates one invoice. The in
 |**Field Name**|**Type**|**Constraint**|**Description**|
 | :- | :- | :- | :- |
 |**id**|uuid|PK|Unique identifier|
-|**tenant\_id**|uuid|FK → tenants.id|Which shop raised this invoice|
+|**tenant_id**|uuid|FK → tenants.id|Which shop raised this invoice|
+|**branch_id**|uuid|FK → branches.id|Which store raised this invoice|
 |**customer\_id**|uuid|FK → customers.id|The buyer. Can be linked to a walk-in anonymous customer record|
 |**created\_by**|uuid|FK → users.id|Which cashier or admin created this invoice|
 |**invoice\_number**|string|NOT NULL|Human-readable number — e.g. INV-0042. Generated via invoice\_sequences|
@@ -489,7 +519,8 @@ Records stock received from suppliers. Creating a purchase automatically increme
 |**Field Name**|**Type**|**Constraint**|**Description**|
 | :- | :- | :- | :- |
 |**id**|uuid|PK|Unique identifier|
-|**tenant\_id**|uuid|FK → tenants.id|Which shop made this purchase|
+|**tenant_id**|uuid|FK → tenants.id|Which shop made this purchase|
+|**branch_id**|uuid|FK → branches.id|Which store received stock|
 |**supplier\_id**|uuid|FK → suppliers.id|Who supplied the stock|
 |**total\_amount**|decimal(10,2)|NOT NULL|Total amount paid to supplier for this purchase|
 |**status**|string|NOT NULL|'received', 'partial', 'pending'|
@@ -512,8 +543,9 @@ Tracks shop operating costs — rent, electricity, wages, packaging, transport. 
 |**Field Name**|**Type**|**Constraint**|**Description**|
 | :- | :- | :- | :- |
 |**id**|uuid|PK|Unique identifier|
-|**tenant\_id**|uuid|FK → tenants.id|Which shop incurred this expense|
-|**recorded\_by**|uuid|FK → users.id|Which staff member logged it — accountability|
+|**tenant_id**|uuid|FK → tenants.id|Which shop incurred this expense|
+|**branch_id**|uuid|FK → branches.id|Which store incurred it|
+|**recorded_by**|uuid|FK → users.id|Which staff member logged it — accountability|
 |**category**|string|NOT NULL|'rent', 'electricity', 'wages', 'packaging', 'transport', 'other'|
 |**amount**|decimal(10,2)|NOT NULL|Amount spent in INR|
 |**note**|text|nullable|Description — e.g. 'August electricity bill'|
@@ -529,8 +561,9 @@ Stores notifications generated by the system for the vendor to act on. Generated
 |**Field Name**|**Type**|**Constraint**|**Description**|
 | :- | :- | :- | :- |
 |**id**|uuid|PK|Unique identifier|
-|**tenant\_id**|uuid|FK → tenants.id|Which shop this alert is for|
-|**alert\_type**|string|NOT NULL|'low\_stock', 'payment\_due', 'high\_demand', 'expiry\_soon', 'sync\_failed'|
+|**tenant_id**|uuid|FK → tenants.id|Which shop this alert is for|
+|**branch_id**|uuid|FK → branches.id|Which branch this alert concerns|
+|**alert_type**|string|NOT NULL|'low_stock', 'payment_due', 'high_demand', 'expiry_soon', 'sync_failed'|
 |**message**|text|NOT NULL|Human-readable alert text — e.g. 'Parle-G stock is below minimum (2 packs remaining)'|
 |**is\_read**|boolean|DEFAULT false|Set true when vendor acknowledges the alert|
 |**created\_at**|timestamp|NOT NULL|When alert was generated|
@@ -557,7 +590,8 @@ Pre-aggregated daily snapshot of business performance per tenant. Generated each
 |**Field Name**|**Type**|**Constraint**|**Description**|
 | :- | :- | :- | :- |
 |**id**|uuid|PK|Unique identifier|
-|**tenant\_id**|uuid|FK → tenants.id|Which shop|
+|**tenant_id**|uuid|FK → tenants.id|Which shop|
+|**branch_id**|uuid|FK → branches.id|Which branch|
 |**date**|date|NOT NULL|The business day this snapshot covers|
 |**total\_sales**|decimal(10,2)|NOT NULL|Sum of invoices.final\_amount for this date|
 |**total\_purchases**|decimal(10,2)|NOT NULL|Sum of purchases.total\_amount for this date|

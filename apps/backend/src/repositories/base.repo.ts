@@ -98,3 +98,32 @@ export class BaseRepository<T> {
     return Number(result?.count ?? 0);
   }
 }
+
+/**
+ * BranchScopedRepository — for tables that are isolated per branch (Inventory, Invoices, etc.).
+ * Automatically adds branch_id to all queries.
+ */
+export class BranchScopedRepository<T> extends BaseRepository<T> {
+  protected branchId: string;
+
+  constructor(tenantId: string, branchId: string, tableName: string, trx?: Knex.Transaction) {
+    super(tenantId, tableName, trx);
+    this.branchId = branchId;
+  }
+
+  protected getQuery(): Knex.QueryBuilder {
+    return super.getQuery().where({ branch_id: this.branchId });
+  }
+
+  protected getRawQuery(): Knex.QueryBuilder {
+    return super.getRawQuery().where({ branch_id: this.branchId });
+  }
+
+  async create(data: Partial<T>): Promise<void> {
+    await this.getInsertQuery().insert({
+      ...data,
+      tenant_id: this.tenantId,
+      branch_id: this.branchId,
+    });
+  }
+}

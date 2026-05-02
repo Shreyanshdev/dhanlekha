@@ -6,6 +6,7 @@ import { AuthenticationError } from '../utils/errors';
 export interface JwtPayload {
   userId: string;
   tenantId: string;
+  branchId: string | null;
   role: 'admin' | 'cashier';
 }
 

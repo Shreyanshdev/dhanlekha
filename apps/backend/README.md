@@ -147,6 +147,23 @@ export class ProductRepository extends BaseRepository<Product> {
 }
 ```
 
+### 🏢 Multi-Branch Scoping (`BranchScopedRepository`)
+
+For tables that must be isolated by store (e.g., `inventory`, `invoices`, `logs`), we use `BranchScopedRepository`. This automatically adds **both** `tenant_id` and `branch_id` to every query.
+
+```typescript
+// src/repositories/inventory.repo.ts
+export class InventoryRepository extends BranchScopedRepository<Inventory> {
+  constructor(tenantId: string, branchId: string, trx?: Knex.Transaction) {
+    super(tenantId, branchId, 'inventory', trx);
+  }
+}
+```
+**Benefits:**
+- Prevents cross-branch stock leakage.
+- Simplifies service logic (no need to pass `branchId` to every filter).
+- Ensures data integrity in multi-store setups.
+
 ### Transactions across Multiple Tables
 
 For complex operations (like creating an Invoice), you must use a database transaction. Pass the transaction down into the repository constructors:

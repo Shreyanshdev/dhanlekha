@@ -1,0 +1,444 @@
+
+<style>
+#erd { width: 100%; overflow-x: auto; }
+#erd svg { min-width: 900px; }
+</style>
+<div id="erd"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"Anthropic Sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '12px',
+    fontFamily: '"Anthropic Sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+  },
+});
+
+const diagram = `erDiagram
+    plans {
+        uuid id PK
+        string name
+        string slug
+        decimal monthly_price
+        decimal annual_price
+        bool is_active
+        timestamp created_at
+    }
+    feature_flags {
+        uuid id PK
+        string feature_key UK
+        string display_name
+        string category
+        timestamp created_at
+    }
+    plan_features {
+        uuid id PK
+        uuid plan_id FK
+        string feature_key FK
+        string feature_type
+        int limit_value
+        bool is_enabled
+    }
+    subscriptions {
+        uuid id PK
+        uuid tenant_id FK
+        uuid plan_id FK
+        string billing_cycle
+        decimal amount_paid
+        string payment_mode
+        string payment_ref
+        string status
+        date starts_at
+        date ends_at
+        timestamp created_at
+    }
+    tenant_overrides {
+        uuid id PK
+        uuid tenant_id FK
+        string feature_key FK
+        string feature_type
+        int limit_value
+        bool is_enabled
+        string reason
+        timestamp expires_at
+        timestamp created_at
+    }
+    usage_tracking {
+        uuid id PK
+        uuid tenant_id FK
+        string feature_key FK
+        int used_count
+        string period
+        timestamp reset_at
+        timestamp updated_at
+    }
+    tenants {
+        uuid id PK
+        string name
+        string phone
+        string gst_number
+        string address
+        uuid plan_id FK
+        string plan_status
+        date trial_ends_at
+        date plan_expires_at
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at
+    }
+    branches {
+        uuid id PK
+        uuid tenant_id FK
+        string name
+        string address
+        string phone
+        bool is_active
+        timestamp created_at
+        timestamp deleted_at
+    }
+    users {
+        uuid id PK
+        uuid tenant_id FK
+        uuid branch_id FK
+        string name
+        string role
+        string password_hash
+        bool is_active
+        uuid created_by FK
+        timestamp last_login_at
+        timestamp created_at
+        timestamp deleted_at
+    }
+    invoice_sequences {
+        uuid id PK
+        uuid tenant_id FK
+        uuid branch_id FK
+        string prefix
+        int current_number
+        timestamp updated_at
+    }
+    settings {
+        uuid id PK
+        uuid tenant_id FK
+        string key
+        text value
+        timestamp updated_at
+    }
+    customers {
+        uuid id PK
+        uuid tenant_id FK
+        string name
+        string phone
+        string address
+        decimal credit_limit
+        decimal total_due
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at
+    }
+    suppliers {
+        uuid id PK
+        uuid tenant_id FK
+        string name
+        string phone
+        string address
+        string gst_number
+        timestamp created_at
+        timestamp deleted_at
+    }
+    products {
+        uuid id PK
+        uuid tenant_id FK
+        string name
+        string category
+        string barcode
+        string unit
+        decimal gst_rate
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at
+    }
+    inventory {
+        uuid id PK
+        uuid tenant_id FK
+        uuid branch_id FK
+        uuid product_id FK
+        decimal total_quantity
+        decimal purchase_price
+        decimal selling_price
+        decimal min_stock_alert
+        timestamp updated_at
+    }
+    inventory_batches {
+        uuid id PK
+        uuid product_id FK
+        uuid branch_id FK
+        decimal quantity
+        decimal purchase_price
+        decimal selling_price
+        date expiry_date
+        string batch_code
+        timestamp created_at
+    }
+    inventory_logs {
+        uuid id PK
+        uuid product_id FK
+        uuid branch_id FK
+        uuid user_id FK
+        string change_type
+        decimal quantity_change
+        uuid reference_id
+        string note
+        timestamp created_at
+    }
+    offers {
+        uuid id PK
+        uuid tenant_id FK
+        uuid branch_id FK
+        string name
+        string offer_type
+        decimal discount_value
+        string applies_to
+        uuid applies_to_id
+        decimal min_purchase_amount
+        int max_uses
+        int used_count
+        date valid_from
+        date valid_until
+        bool is_active
+        timestamp created_at
+        timestamp deleted_at
+    }
+    invoices {
+        uuid id PK
+        uuid tenant_id FK
+        uuid branch_id FK
+        uuid customer_id FK
+        uuid created_by FK
+        string invoice_number
+        decimal subtotal
+        decimal tax_amount
+        decimal discount_amount
+        decimal final_amount
+        decimal amount_paid
+        decimal amount_due
+        string status
+        string note
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at
+    }
+    invoice_items {
+        uuid id PK
+        uuid invoice_id FK
+        uuid product_id FK
+        uuid batch_id FK
+        decimal quantity
+        decimal unit_price
+        decimal gst_rate
+        decimal discount_amount
+        uuid offer_id FK
+        decimal total
+    }
+    payments {
+        uuid id PK
+        uuid tenant_id FK
+        uuid customer_id FK
+        decimal amount
+        decimal unallocated_amount
+        string payment_mode
+        string reference_note
+        string status
+        timestamp created_at
+        timestamp deleted_at
+    }
+    payment_allocations {
+        uuid id PK
+        uuid payment_id FK
+        uuid invoice_id FK
+        decimal amount
+        timestamp created_at
+    }
+    customer_ledger {
+        uuid id PK
+        uuid tenant_id FK
+        uuid customer_id FK
+        string entry_type
+        uuid reference_id
+        decimal debit
+        decimal credit
+        decimal running_balance
+        timestamp created_at
+    }
+    ledger_snapshots {
+        uuid id PK
+        uuid tenant_id FK
+        uuid customer_id FK
+        decimal closing_balance
+        date snapshot_date
+        timestamp created_at
+    }
+    purchases {
+        uuid id PK
+        uuid tenant_id FK
+        uuid branch_id FK
+        uuid supplier_id FK
+        decimal total_amount
+        string status
+        timestamp created_at
+        timestamp deleted_at
+    }
+    purchase_items {
+        uuid id PK
+        uuid purchase_id FK
+        uuid product_id FK
+        decimal quantity
+        decimal purchase_price
+        decimal total
+    }
+    expenses {
+        uuid id PK
+        uuid tenant_id FK
+        uuid branch_id FK
+        uuid recorded_by FK
+        string category
+        decimal amount
+        string note
+        string payment_mode
+        timestamp created_at
+        timestamp deleted_at
+    }
+    alerts {
+        uuid id PK
+        uuid tenant_id FK
+        uuid branch_id FK
+        string alert_type
+        string message
+        bool is_read
+        timestamp created_at
+    }
+    sync_queue {
+        uuid id PK
+        uuid tenant_id FK
+        string table_name
+        uuid record_id
+        string action
+        int version
+        string device_id
+        string conflict_strategy
+        bool is_synced
+        string error_message
+        timestamp created_at
+        timestamp synced_at
+    }
+    daily_metrics {
+        uuid id PK
+        uuid tenant_id FK
+        uuid branch_id FK
+        date date
+        decimal total_sales
+        decimal total_purchases
+        decimal total_expenses
+        decimal total_profit
+        int invoices_count
+        int new_customers_count
+        timestamp created_at
+    }
+    product_ai_data {
+        uuid id PK
+        uuid product_id FK
+        string normalized_name
+        json tags
+        decimal price_suggestion
+        decimal confidence_score
+        timestamp last_used_at
+        timestamp updated_at
+    }
+
+    plans ||--o{ plan_features : "defines"
+    plans ||--o{ subscriptions : "purchased as"
+    plans ||--o{ tenants : "assigned to"
+    feature_flags ||--o{ plan_features : "referenced by"
+    feature_flags ||--o{ tenant_overrides : "overridden in"
+    feature_flags ||--o{ usage_tracking : "tracked by"
+    tenants ||--o{ subscriptions : "has history"
+    tenants ||--o{ tenant_overrides : "custom limits"
+    tenants ||--o{ usage_tracking : "consumes"
+    tenants ||--o{ branches : "owns"
+    tenants ||--o{ users : "has staff"
+    tenants ||--o{ customers : "manages"
+    tenants ||--o{ suppliers : "manages"
+    tenants ||--o{ products : "sells"
+    tenants ||--o{ offers : "creates"
+    tenants ||--o{ invoices : "generates"
+    tenants ||--o{ payments : "receives"
+    tenants ||--o{ purchases : "records"
+    tenants ||--o{ expenses : "logs"
+    tenants ||--o{ alerts : "receives"
+    tenants ||--o{ sync_queue : "queues"
+    tenants ||--o{ settings : "configures"
+    tenants ||--o{ customer_ledger : "maintains"
+    tenants ||--o{ daily_metrics : "tracks"
+    branches ||--o{ users : "has cashiers"
+    branches ||--o{ inventory : "holds stock"
+    branches ||--o{ inventory_batches : "stores batches"
+    branches ||--o{ inventory_logs : "logs movements"
+    branches ||--o{ invoices : "raises"
+    branches ||--o{ purchases : "receives stock"
+    branches ||--o{ expenses : "incurs"
+    branches ||--o{ alerts : "triggers"
+    branches ||--o{ offers : "runs offers"
+    branches ||--o{ daily_metrics : "reports"
+    branches ||--o{ invoice_sequences : "has counter"
+    users ||--o{ invoices : "creates"
+    users ||--o{ inventory_logs : "triggers"
+    users ||--o{ expenses : "records"
+    products ||--o{ inventory : "stocked in"
+    products ||--o{ inventory_batches : "has batches"
+    products ||--o{ inventory_logs : "tracked in"
+    products ||--o{ invoice_items : "sold via"
+    products ||--o{ purchase_items : "restocked via"
+    products ||--|| product_ai_data : "enriched by"
+    customers ||--o{ invoices : "billed on"
+    customers ||--o{ payments : "makes"
+    customers ||--o{ customer_ledger : "has ledger"
+    customers ||--o{ ledger_snapshots : "snapshots"
+    invoices ||--o{ invoice_items : "contains"
+    invoices ||--o{ payment_allocations : "settled by"
+    payments ||--o{ payment_allocations : "allocated via"
+    offers ||--o{ invoice_items : "applied to"
+    inventory_batches ||--o{ invoice_items : "consumed in"
+    suppliers ||--o{ purchases : "fulfils"
+    purchases ||--o{ purchase_items : "lists"
+`;
+
+const { svg } = await mermaid.render('erd-svg', diagram);
+document.getElementById('erd').innerHTML = svg;
+
+document.querySelectorAll('#erd svg .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 8) return;
+  const xs = [nums[0], nums[2], nums[4], nums[6]];
+  const ys = [nums[1], nums[3], nums[5], nums[7]];
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y);
+  rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('rx', '8');
+  for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+</script>
