@@ -46,6 +46,8 @@ export async function createUser(tenantId: string, data: CreateUserInput): Promi
 
   await repo.create({
     id: userId,
+    tenant_id: tenantId,
+    branch_id: data.branch_id || null,
     name,
     email,
     password_hash: passwordHash,
@@ -55,6 +57,7 @@ export async function createUser(tenantId: string, data: CreateUserInput): Promi
   return {
     id: userId,
     tenant_id: tenantId,
+    branch_id: data.branch_id || null,
     name,
     email,
     role,
@@ -96,6 +99,7 @@ export async function updateUser(tenantId: string, userId: string, data: UpdateU
   if (data.name !== undefined) updatePayload.name = data.name;
   if (data.email !== undefined) updatePayload.email = data.email;
   if (data.role !== undefined) updatePayload.role = data.role;
+  if (data.branch_id !== undefined) updatePayload.branch_id = data.branch_id;
 
   if (Object.keys(updatePayload).length > 0) {
     await repo.update(userId, updatePayload as any);

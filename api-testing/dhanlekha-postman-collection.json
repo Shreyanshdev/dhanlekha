@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "c1f39c20-80a5-420a-8a50-61ccf28db0b7",
 		"name": "DhanLekha ERP API",
-		"description": "Complete API Collection for DhanLekha ERP Backend — Sprint 1 & 2",
+		"description": "Complete API Collection for DhanLekha ERP Backend — Sprint 3.5 (Multi-Branch)",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -19,8 +19,7 @@
 							"host": ["{{BASE_URL}}"],
 							"path": ["health"]
 						}
-					},
-					"response": []
+					}
 				}
 			]
 		},
@@ -44,8 +43,7 @@
 							"host": ["{{BASE_URL}}"],
 							"path": ["auth", "register"]
 						}
-					},
-					"response": []
+					}
 				},
 				{
 					"name": "Login",
@@ -57,7 +55,8 @@
 									"var jsonData = pm.response.json();",
 									"if (jsonData.success && jsonData.data.token) {",
 									"    pm.collectionVariables.set('JWT_TOKEN', jsonData.data.token);",
-									"    console.log('Token auto-saved to JWT_TOKEN variable');",
+									"    pm.collectionVariables.set('BRANCH_ID', jsonData.data.user.branchId);",
+									"    console.log('Token & Branch ID auto-saved');",
 									"}"
 								],
 								"type": "text/javascript"
@@ -79,8 +78,7 @@
 							"host": ["{{BASE_URL}}"],
 							"path": ["auth", "login"]
 						}
-					},
-					"response": []
+					}
 				}
 			]
 		},
@@ -99,11 +97,49 @@
 							"host": ["{{BASE_URL}}"],
 							"path": ["tenants", "me"]
 						}
-					},
-					"response": []
+					}
+				}
+			]
+		},
+		{
+			"name": "Branches (Admin Only)",
+			"item": [
+				{
+					"name": "List Branches",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" }
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/branches",
+							"host": ["{{BASE_URL}}"],
+							"path": ["branches"]
+						}
+					}
 				},
 				{
-					"name": "Update Tenant Profile",
+					"name": "Create Branch",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Lucknow Main Branch\",\n    \"address\": \"Hazratganj, Lucknow\",\n    \"phone\": \"0522-123456\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/branches",
+							"host": ["{{BASE_URL}}"],
+							"path": ["branches"]
+						}
+					}
+				},
+				{
+					"name": "Update Branch",
 					"request": {
 						"method": "PATCH",
 						"header": [
@@ -112,16 +148,15 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Super Mart Premium\",\n    \"phone\": \"9876543210\"\n}",
+							"raw": "{\n    \"name\": \"Lucknow Main Branch Updated\"\n}",
 							"options": { "raw": { "language": "json" } }
 						},
 						"url": {
-							"raw": "{{BASE_URL}}/tenants/me",
+							"raw": "{{BASE_URL}}/branches/{{BRANCH_ID}}",
 							"host": ["{{BASE_URL}}"],
-							"path": ["tenants", "me"]
+							"path": ["branches", "{{BRANCH_ID}}"]
 						}
-					},
-					"response": []
+					}
 				}
 			]
 		},
@@ -140,8 +175,7 @@
 							"host": ["{{BASE_URL}}"],
 							"path": ["users"]
 						}
-					},
-					"response": []
+					}
 				},
 				{
 					"name": "Create Staff User",
@@ -153,7 +187,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Cashier One\",\n    \"email\": \"cashier1@supermart.com\",\n    \"password\": \"cashier123\",\n    \"role\": \"cashier\"\n}",
+							"raw": "{\n    \"name\": \"Cashier One\",\n    \"email\": \"cashier1@supermart.com\",\n    \"password\": \"cashier123\",\n    \"role\": \"cashier\",\n    \"branch_id\": \"{{BRANCH_ID}}\"\n}",
 							"options": { "raw": { "language": "json" } }
 						},
 						"url": {
@@ -161,44 +195,80 @@
 							"host": ["{{BASE_URL}}"],
 							"path": ["users"]
 						}
-					},
-					"response": []
+					}
+				}
+			]
+		},
+		{
+			"name": "Products & Inventory",
+			"item": [
+				{
+					"name": "List Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" }
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/products",
+							"host": ["{{BASE_URL}}"],
+							"path": ["products"]
+						}
+					}
 				},
 				{
-					"name": "Update Staff User",
+					"name": "Create Product (Admin)",
 					"request": {
-						"method": "PATCH",
+						"method": "POST",
 						"header": [
 							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" },
 							{ "key": "Content-Type", "value": "application/json" }
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Cashier One Updated\",\n    \"role\": \"cashier\"\n}",
+							"raw": "{\n    \"name\": \"Parle-G 800g\",\n    \"barcode\": \"8901234567890\",\n    \"gst_rate\": 5,\n    \"base_unit\": \"pcs\",\n    \"category\": \"Snacks\",\n    \"initial_quantity\": 100,\n    \"selling_price\": 8500,\n    \"purchase_price\": 7000,\n    \"min_stock_alert\": 10\n}",
 							"options": { "raw": { "language": "json" } }
 						},
 						"url": {
-							"raw": "{{BASE_URL}}/users/{{USER_ID}}",
+							"raw": "{{BASE_URL}}/products",
 							"host": ["{{BASE_URL}}"],
-							"path": ["users", "{{USER_ID}}"]
+							"path": ["products"]
 						}
-					},
-					"response": []
+					}
 				},
 				{
-					"name": "Delete Staff User",
+					"name": "Get Low Stock Alerts",
 					"request": {
-						"method": "DELETE",
+						"method": "GET",
 						"header": [
 							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" }
 						],
 						"url": {
-							"raw": "{{BASE_URL}}/users/{{USER_ID}}",
+							"raw": "{{BASE_URL}}/products/low-stock",
 							"host": ["{{BASE_URL}}"],
-							"path": ["users", "{{USER_ID}}"]
+							"path": ["products", "low-stock"]
 						}
-					},
-					"response": []
+					}
+				},
+				{
+					"name": "Manual Stock Adjustment (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"quantity_change\": -5,\n    \"notes\": \"Damaged stock removal\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/products/{{PRODUCT_ID}}/adjust",
+							"host": ["{{BASE_URL}}"],
+							"path": ["products", "{{PRODUCT_ID}}", "adjust"]
+						}
+					}
 				}
 			]
 		}
@@ -211,12 +281,22 @@
 		},
 		{
 			"key": "JWT_TOKEN",
-			"value": "your_jwt_token_here",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "BRANCH_ID",
+			"value": "",
 			"type": "string"
 		},
 		{
 			"key": "USER_ID",
-			"value": "paste_user_id_here",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "PRODUCT_ID",
+			"value": "",
 			"type": "string"
 		}
 	]

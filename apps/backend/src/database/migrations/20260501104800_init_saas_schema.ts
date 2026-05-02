@@ -42,10 +42,25 @@ export async function up(knex: Knex): Promise<void> {
     table.index(['is_deleted']);
   });
 
+  // ── BRANCHES ──
+  await knex.schema.createTable('branches', (table) => {
+    table.uuid('id').primary();
+    table.uuid('tenant_id').references('id').inTable('tenants').onDelete('CASCADE');
+    table.string('name').notNullable();
+    table.text('address');
+    table.string('phone');
+    table.boolean('is_active').defaultTo(true);
+    table.boolean('is_deleted').defaultTo(false);
+    table.timestamps(true, true);
+
+    table.index(['tenant_id', 'is_deleted']);
+  });
+
   // ── USERS (Admin/Cashier) ──
   await knex.schema.createTable('users', (table) => {
     table.uuid('id').primary();
     table.uuid('tenant_id').references('id').inTable('tenants').onDelete('CASCADE');
+    table.uuid('branch_id').references('id').inTable('branches').onDelete('CASCADE').nullable();
     table.string('name').notNullable();
     table.string('email').notNullable(); // Enforced unique per tenant via unique index below
     table.string('password_hash').notNullable();
@@ -98,6 +113,7 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists('usage_tracking');
   await knex.schema.dropTableIfExists('tenant_overrides');
   await knex.schema.dropTableIfExists('users');
+  await knex.schema.dropTableIfExists('branches');
   await knex.schema.dropTableIfExists('tenants');
   await knex.schema.dropTableIfExists('plan_features');
   await knex.schema.dropTableIfExists('feature_flags');

@@ -4,10 +4,10 @@
 
 ---
 
-## Current Sprint: Sprint 2 — User Management & Authentication
+## Current Sprint: Sprint 3.5 — Branch Management & Scoping
 **Status:** ✅ Complete
 **Started:** 2026-05-02
-**Completed:** 2026-05-02
+**Completed:** 2026-05-02 (Verified with E2E Security Tests)
 
 ---
 
@@ -46,7 +46,7 @@
 - `apps/backend/src/config/redis.js` — Redis client (graceful failure)
 - `apps/backend/src/middleware/errorHandler.middleware.js` — Global error handler
 - `apps/backend/src/middleware/requestLogger.middleware.js` — Request logger
-- `apps/backend/src/middleware/validate.middleware.js` — Joi validation factory
+- `apps/backend/src/middleware/validate.middleware.js` — Zod validation factory
 - `apps/backend/src/modules/health/health.routes.js` — Health check endpoint
 - `apps/backend/src/utils/errors.js` — Error classes (400/401/403/404/409/422)
 - `apps/backend/src/utils/response.js` — Standard response helpers
@@ -92,7 +92,29 @@
 | 10 | Postman collection updated with all endpoints | ✅ Done | Login auto-saves JWT to collection variable |
 
 ### Sprint 3: Product & Inventory Management
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Core inventory management with barcode support and automatic logging.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Create `products`, `inventory`, `inventory_batches`, `inventory_logs` | ✅ Done | Migration: `20260502063500_sprint3_products_inventory.ts` |
+| 2 | `POST /api/v1/products` — create product + initial stock | ✅ Done | Atomic transaction across 3 tables |
+| 3 | `GET /api/v1/products` — list/search with inventory summary | ✅ Done | Join logic in `ProductRepository` |
+| 4 | `GET /api/v1/products/barcode/:code` — super-fast lookup | ✅ Done | Indexed barcode search |
+| 5 | `POST /api/v1/products/:id/adjust` — manual stock correction | ✅ Done | Audit trail logged automatically |
+| 6 | `GET /api/v1/products/low-stock` — alerts based on threshold | ✅ Done | Filtered by `min_stock_alert` |
+
+### Sprint 3.5: Multi-Branch (Multi-Store) Foundation
+**Status:** ✅ Complete
+**Goal:** Transition from single-store to multi-store architecture with strict branch isolation.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Implement `BranchScopedRepository<T>` | ✅ Done | Automatic `branch_id` injection and filtering |
+| 2 | Create `branches` table and management module | ✅ Done | Full CRUD for store/branch management |
+| 3 | Scoped Inventory isolation | ✅ Done | Inventory queries automatically filtered by `branch_id` |
+| 4 | Refactor Auth for Branch Awareness | ✅ Done | Default branch creation on register; `branchId` in JWT |
+| 5 | Security & Edge Case Verification | ✅ Done | Verified cross-tenant/cross-branch isolation |
 
 ### Sprint 4: Customer & Supplier Management
 **Status:** ⬜ Not Started
@@ -151,8 +173,8 @@
 
 | Phase | Sprints | Status |
 |-------|---------|--------|
-| Phase 1: Foundation | 0–2 | ✅ Complete (0 ✅, 1 ✅, 2 ✅) |
-| Phase 2: Core ERP | 3–10 | ⬜ Not Started |
+| Phase 1: Foundation | 0–2 | ✅ Complete |
+| Phase 2: Core ERP | 3–10 | 🔄 In Progress (4 ⬜) |
 | Phase 3: System Features | 11–14 | ⬜ Not Started |
 | Phase 4: Performance & Production | 15–16 | ⬜ Not Started |
 | Phase 5: Frontend | 17–20 | ⬜ Not Started |

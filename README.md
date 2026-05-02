@@ -52,10 +52,15 @@ dhanlekha/
 │   │       ├── modules/
 │   │       │   ├── auth/                        # Register, login endpoints
 │   │       │   ├── users/                       # User CRUD (admin only)
+│   │       │   ├── branches/                    # Branch/Store management
+│   │       │   ├── products/                    # Product & Inventory APIs
 │   │       │   ├── tenants/                     # Tenant profiles
 │   │       │   └── health/                      # GET /api/v1/health
 │   │       ├── repositories/
 │   │       │   ├── base.repo.ts                 # Base multi-tenant repo
+│   │       │   ├── branch.repo.ts               # Branch management
+│   │       │   ├── inventory.repo.ts            # Branch-scoped inventory
+│   │       │   ├── product.repo.ts              # Product catalog
 │   │       │   ├── tenant.repo.ts
 │   │       │   └── user.repo.ts
 │   │       ├── database/
@@ -187,8 +192,8 @@ AI Service (Python FastAPI) — optional
 
 | Phase | Sprints | Focus | Status |
 |-------|---------|-------|--------|
-| Phase 1 | 0–2 | Backend infrastructure, auth, SaaS | 🔄 In Progress |
-| Phase 2 | 3–10 | Core ERP backend APIs | ⬜ Not Started |
+| Phase 1 | 0–2 | Backend infrastructure, auth, SaaS | ✅ Complete |
+| Phase 2 | 3–10 | Core ERP backend APIs | 🔄 In Progress |
 | Phase 3 | 11–14 | System features (sync, alerts, AI) | ⬜ Not Started |
 | Phase 4 | 15–16 | Performance & production readiness | ⬜ Not Started |
 | Phase 5 | 17–20 | Frontend (after backend is complete) | ⬜ Not Started |
@@ -216,7 +221,12 @@ See [docs/sprint.md](docs/sprint.md) for the full execution plan and [docs/progr
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/health` | System health check (DB + Redis status) |
+| GET    | `/api/v1/health` | System health check |
+| POST   | `/api/v1/auth/register` | Tenant onboarding |
+| POST   | `/api/v1/auth/login` | JWT Authentication |
+| GET    | `/api/v1/branches` | List stores/branches |
+| POST   | `/api/v1/products` | Create product + inventory |
+| POST   | `/api/v1/products/:id/adjust` | Branch-scoped stock adjustment |
 
 More endpoints will be added in subsequent sprints.
 
