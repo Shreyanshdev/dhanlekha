@@ -63,8 +63,9 @@ dhanlekha/
 │   │       │   ├── branch.repo.ts               # Branch management
 │   │       │   ├── inventory.repo.ts            # Branch-scoped inventory
 │   │       │   ├── product.repo.ts              # Product catalog
-│   │       │   ├── customer.repo.ts             # Customer data & balances
+│   │       │   ├── customer.repo.ts             # Customer profile & financial ledger
 │   │       │   ├── supplier.repo.ts             # Supplier data
+│       │   ├── invoice.repo.ts              # Invoices, items, and sequences
 │   │       │   ├── tenant.repo.ts
 │   │       │   └── user.repo.ts
 │   │       ├── database/
@@ -262,6 +263,10 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 | POST | `/api/v1/customers` | Add customer with credit limit |
 | GET | `/api/v1/suppliers` | Search/list inventory suppliers |
 | POST | `/api/v1/suppliers` | Add supplier with GST details |
+| GET | `/api/v1/invoices` | List branch invoices (paginated) |
+| POST | `/api/v1/invoices` | Create invoice (full atomic workflow) |
+| GET | `/api/v1/invoices/:id` | Get invoice details with line items |
+| DELETE | `/api/v1/invoices/:id` | Cancel invoice & reverse inventory |
 
 ---
 

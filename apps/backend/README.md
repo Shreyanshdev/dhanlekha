@@ -133,19 +133,26 @@ import type { Product } from '@dhanlekha/shared';
 import { Knex } from 'knex';
 
 export class ProductRepository extends BaseRepository<Product> {
-  // Pass `trx` through to the BaseRepository
   constructor(tenantId: string, trx?: Knex.Transaction) {
     super(tenantId, 'products', trx); 
   }
 
-  // Add custom queries here
   async findByBarcode(barcode: string) {
-    // this.getQuery() automatically adds: WHERE tenant_id = ? AND is_deleted = false
-    // It also automatically applies `this.trx` if it was passed to the constructor.
     return await this.getQuery().where({ barcode }).first(); 
   }
 }
 ```
+
+### 📦 Consolidated Repositories (Domain Aggregates)
+
+While we generally follow one repository per table, complex domains like **Billing** use **Consolidated Repositories** to manage multiple related tables within a single domain aggregate.
+
+Example: **`InvoiceRepository`**
+- Manages `invoices` table.
+- Manages `invoice_items` table.
+- Manages `invoice_sequences` table (atomic numbering).
+
+This ensures that the `InvoicesService` only needs to interact with one domain expert for all billing data operations.
 
 ### 🏢 Multi-Branch Scoping (`BranchScopedRepository`)
 
@@ -216,3 +223,21 @@ When you build a new feature (like Products):
 8. **App:** Mount the route in `src/app.ts`.
 
 By following this pattern, the backend will remain scalable, secure, and easy to test as it grows into a massive enterprise ERP!
+
+---
+
+## 🧾 Billing Engine (Sprint 5)
+
+The Billing Engine is the most critical part of the system. It uses a **10-step atomic workflow** to ensure financial and inventory integrity:
+
+1. **Recalculate Totals**: Never trust frontend calculations.
+2. **Atomic Numbering**: Uses `SELECT FOR UPDATE` on `invoice_sequences` to generate `INV-0001`.
+3. **Insert Invoice**: Saves the header with snapshotted totals.
+4. **Insert Items**: Saves line items with snapshotted prices and GST rates.
+5. **Decrement Stock**: Subtracts quantity from `inventory`.
+6. **Audit Log**: Creates `inventory_logs` for every item sold.
+7. **Ledger Update**: (If customer linked) Appends entry to `customer_ledger`.
+8. **Balance Sync**: Updates `customers.total_due` (denormalized balance).
+9. **Credit Check**: Blocks sale if customer exceeds their `credit_limit`.
+10. **Commit**: Finalizes the transaction or rolls back everything on error.
+
