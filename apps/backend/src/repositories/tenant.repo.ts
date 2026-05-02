@@ -15,7 +15,7 @@ export class TenantRepository extends BaseRepository<Tenant> {
   }
 
   /** Override: tenants table has no tenant_id column */
-  protected getQuery(): Knex.QueryBuilder {
+  public getQuery(): Knex.QueryBuilder {
     return this.getRawQuery();
   }
 

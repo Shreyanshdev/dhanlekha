@@ -263,10 +263,15 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 | POST | `/api/v1/customers` | Add customer with credit limit |
 | GET | `/api/v1/suppliers` | Search/list inventory suppliers |
 | POST | `/api/v1/suppliers` | Add supplier with GST details |
-| GET | `/api/v1/invoices` | List branch invoices (paginated) |
-| POST | `/api/v1/invoices` | Create invoice (full atomic workflow) |
-| GET | `/api/v1/invoices/:id` | Get invoice details with line items |
-| DELETE | `/api/v1/invoices/:id` | Cancel invoice & reverse inventory |
+
+### 🧾 Billing & Invoicing (Sprint 5)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/invoices` | Create atomic invoice (stock + ledger sync) |
+| GET | `/api/v1/invoices` | List billing history (paginated) |
+| GET | `/api/v1/invoices/:id` | Get full invoice detail with items |
+| DELETE | `/api/v1/invoices/:id` | Cancel invoice & reverse stock/ledger |
+| GET | `/api/v1/products/barcode/:code` | Fast barcode lookup |
 
 ---
 

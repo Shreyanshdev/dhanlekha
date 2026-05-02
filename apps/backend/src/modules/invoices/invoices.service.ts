@@ -1,15 +1,19 @@
 import { v4 as uuidv4 } from 'uuid';
 import { InvoiceRepository } from '../../repositories/invoice.repo';
+import { ProductRepository } from '../../repositories/product.repo';
 import { InventoryRepository, InventoryLogRepository } from '../../repositories/inventory.repo';
 import { CustomerRepository } from '../../repositories/customer.repo';
 import { withTransaction } from '../../database/transaction';
 import { NotFoundError, BadRequestError } from '../../utils/errors';
 import type { CreateInvoiceInput } from './invoices.validator';
-import type { Invoice, InvoiceItem } from '@dhanlekha/shared';
+import type { Invoice, InvoiceItem, Product, Inventory } from '@dhanlekha/shared';
 
 /**
- * Atomic Invoice Creation Flow
- * Ensures financial correctness, inventory synchronization, and ledger accuracy.
+ * Atomic Invoice Creation Flow (Sprint 5 + Sprint 6)
+ *
+ * Supports TWO billing modes:
+ *   1. Barcode Scan — frontend sends { product_id, quantity } only → backend auto-fetches price/tax
+ *   2. Manual Entry — frontend sends { product_id, quantity, unit_price, gst_rate } → backend uses provided values
  */
 export async function createInvoice(
   tenantId: string,
@@ -24,7 +28,20 @@ export async function createInvoice(
     const logRepo = new InventoryLogRepository(tenantId, branchId, trx);
     const customerRepo = new CustomerRepository(tenantId, trx);
 
-    // 2. Recalculate Totals (Never trust frontend)
+    // 2. Batch-fetch Product & Inventory data (Sprint 6 optimization)
+    //    Single query per table instead of N+1 per item
+    const productIds = data.items.map(i => i.product_id);
+    const productRepo = new ProductRepository(tenantId, trx);
+
+    const [products, inventories] = await Promise.all([
+      productRepo.getQuery().whereIn('id', productIds) as Promise<Product[]>,
+      inventoryRepo.getQuery().whereIn('product_id', productIds) as Promise<Inventory[]>,
+    ]);
+
+    const productMap = new Map<string, Product>(products.map(p => [p.id, p]));
+    const inventoryMap = new Map<string, Inventory>(inventories.map(i => [i.product_id, i]));
+
+    // 3. Recalculate Totals (Never trust frontend)
     let subtotal = 0;
     let totalTax = 0;
     let totalDiscount = 0;
@@ -32,10 +49,31 @@ export async function createInvoice(
     const itemsToCreate: Partial<InvoiceItem>[] = [];
 
     for (const item of data.items) {
+      const product = productMap.get(item.product_id);
+      const inventory = inventoryMap.get(item.product_id);
+
+      if (!product) {
+        throw new NotFoundError(`Product ${item.product_id}`);
+      }
+      if (!inventory) {
+        throw new BadRequestError(`Product '${product.name}' has no inventory in this branch`);
+      }
+
+      // Sprint 6: Use frontend values if provided, otherwise auto-fetch from DB
+      const unitPrice = item.unit_price ?? Number(inventory.selling_price);
+      const gstRate = item.gst_rate ?? Number(product.gst_rate);
+
+      // Validate stock availability
+      if (Number(inventory.total_quantity) < item.quantity) {
+        throw new BadRequestError(
+          `Insufficient stock for '${product.name}'. Available: ${inventory.total_quantity}, Requested: ${item.quantity}`
+        );
+      }
+
       // Calculate item values
-      const itemSubtotal = item.unit_price * item.quantity;
+      const itemSubtotal = unitPrice * item.quantity;
       const itemTaxableAmount = itemSubtotal - item.discount_amount;
-      const itemTax = (itemTaxableAmount * item.gst_rate) / 100;
+      const itemTax = (itemTaxableAmount * gstRate) / 100;
       const itemTotal = itemTaxableAmount + itemTax;
 
       subtotal += itemSubtotal;
@@ -46,8 +84,8 @@ export async function createInvoice(
         id: uuidv4(),
         product_id: item.product_id,
         quantity: item.quantity,
-        unit_price: item.unit_price,
-        gst_rate: item.gst_rate,
+        unit_price: unitPrice,
+        gst_rate: gstRate,
         discount_amount: item.discount_amount,
         total: itemTotal,
       });

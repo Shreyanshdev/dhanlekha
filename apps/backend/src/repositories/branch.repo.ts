@@ -14,7 +14,7 @@ export class BranchRepository extends BaseRepository<Branch> {
   // docs/db.md says: deleted_at: timestamp nullable for branches.
   // Let's assume standard soft delete for branches.
 
-  protected getQuery(): Knex.QueryBuilder {
+  public getQuery(): Knex.QueryBuilder {
     const qb = this.trx ? this.trx(this.tableName) : db(this.tableName);
     return qb.where({ tenant_id: this.tenantId, is_deleted: false });
   }

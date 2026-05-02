@@ -3,8 +3,8 @@ import { z } from 'zod';
 export const invoiceItemSchema = z.object({
   product_id: z.string().uuid(),
   quantity: z.number().positive(),
-  unit_price: z.number().nonnegative(), // Price in paise
-  gst_rate: z.number().min(0).max(100),
+  unit_price: z.number().nonnegative().optional(),   // Optional: auto-fetched from inventory if missing (barcode scan flow)
+  gst_rate: z.number().min(0).max(100).optional(),   // Optional: auto-fetched from product if missing (barcode scan flow)
   discount_amount: z.number().nonnegative().default(0),
 });
 
