@@ -22,7 +22,7 @@ DhanLekha (धनलेखा — "wealth ledger") is a multi-tenant, offline-fi
 | Monorepo | Turborepo |
 | Container | Docker + Docker Compose |
 | Auth | JWT + bcrypt |
-| Validation | Joi |
+| Validation | Zod |
 
 ---
 
@@ -44,18 +44,27 @@ dhanlekha/
 │   │       │   ├── knexfile.ts     # Knex config (SQLite + PostgreSQL)
 │   │       │   └── redis.ts        # Redis client (graceful failure)
 │   │       ├── middleware/
+│   │       │   ├── auth.middleware.ts           # JWT authentication
+│   │       │   ├── authorize.middleware.ts      # Role-based access (admin/cashier)
 │   │       │   ├── errorHandler.middleware.ts   # Global error handler
 │   │       │   ├── requestLogger.middleware.ts  # Request logging
-│   │       │   └── validate.middleware.ts       # Joi validation factory
+│   │       │   └── validate.middleware.ts       # Zod validation factory
 │   │       ├── modules/
-│   │       │   └── health/
-│   │       │       └── health.routes.ts         # GET /api/v1/health
+│   │       │   ├── auth/                        # Register, login endpoints
+│   │       │   ├── users/                       # User CRUD (admin only)
+│   │       │   ├── tenants/                     # Tenant profiles
+│   │       │   └── health/                      # GET /api/v1/health
+│   │       ├── repositories/
+│   │       │   ├── base.repo.ts                 # Base multi-tenant repo
+│   │       │   ├── tenant.repo.ts
+│   │       │   └── user.repo.ts
 │   │       ├── database/
-│   │       │   ├── migrations/     # Knex migrations (Sprint 1+)
-│   │       │   └── seeds/          # Knex seed data (Sprint 1+)
+│   │       │   ├── transaction.ts               # withTransaction helper
+│   │       │   ├── migrations/                  # Knex migrations (Sprint 1+)
+│   │       │   └── seeds/                       # Knex seed data (Sprint 1+)
 │   │       └── utils/
-│   │           ├── errors.ts       # Error classes (400/401/403/404/409/422)
-│   │           └── response.ts     # Standard response helpers
+│   │           ├── errors.ts                    # Error classes (400/401/403/404/409/422)
+│   │           └── response.ts                  # Standard response helpers
 │   ├── frontend/                   # Next.js + Electron (Sprint 17+)
 │   │   └── package.json
 │   └── ai-service/                 # Python FastAPI (Sprint 14+)
