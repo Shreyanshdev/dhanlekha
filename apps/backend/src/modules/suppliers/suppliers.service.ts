@@ -41,7 +41,7 @@ export async function createSupplier(tenantId: string, data: CreateSupplierInput
     address: data.address || null,
     gst_number: data.gst_number || null,
     is_deleted: false,
-  } as any);
+  });
 
   return await getSupplierById(tenantId, id);
 }
@@ -60,7 +60,7 @@ export async function updateSupplier(tenantId: string, id: string, data: UpdateS
     }
   }
 
-  await repo.update(id, data as any);
+  await repo.update(id, data as Partial<Supplier>);
   return await getSupplierById(tenantId, id);
 }
 

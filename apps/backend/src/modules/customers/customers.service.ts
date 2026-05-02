@@ -42,7 +42,7 @@ export async function createCustomer(tenantId: string, data: CreateCustomerInput
     credit_limit: data.credit_limit,
     total_due: 0,
     is_deleted: false,
-  } as any);
+  });
 
   return await getCustomerById(tenantId, id);
 }
@@ -61,7 +61,7 @@ export async function updateCustomer(tenantId: string, id: string, data: UpdateC
     }
   }
 
-  await repo.update(id, data as any);
+  await repo.update(id, data);
   return await getCustomerById(tenantId, id);
 }
 

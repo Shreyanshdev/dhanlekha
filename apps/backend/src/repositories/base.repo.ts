@@ -70,6 +70,10 @@ export class BaseRepository<T> {
     return await this.getQuery().select(columns).where({ id }).first();
   }
 
+  /**
+   * Create a new record.
+   * We use Partial<T> to allow omitting fields with database defaults (is_deleted, created_at).
+   */
   async create(data: Partial<T>): Promise<void> {
     await this.getInsertQuery().insert({
       ...data,
@@ -77,6 +81,10 @@ export class BaseRepository<T> {
     });
   }
 
+  /**
+   * Update an existing record by ID.
+   * Partial<T> allows updating only specific fields.
+   */
   async update(id: string, data: Partial<T>): Promise<number> {
     return await this.getQuery().where({ id }).update(data);
   }
