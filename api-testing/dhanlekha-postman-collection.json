@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "c1f39c20-80a5-420a-8a50-61ccf28db0b7",
 		"name": "DhanLekha ERP API",
-		"description": "Complete API Collection for DhanLekha ERP Backend — Sprint 3.5 (Multi-Branch)",
+		"description": "Complete API Collection for DhanLekha ERP Backend — Sprint 4 (Partners)",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -271,6 +271,84 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Customers",
+			"item": [
+				{
+					"name": "List Customers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" }
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/customers",
+							"host": ["{{BASE_URL}}"],
+							"path": ["customers"]
+						}
+					}
+				},
+				{
+					"name": "Create Customer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Vasu Jain\",\n    \"phone\": \"9876543210\",\n    \"address\": \"Lajpat Nagar, Delhi\",\n    \"credit_limit\": 50000\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/customers",
+							"host": ["{{BASE_URL}}"],
+							"path": ["customers"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Suppliers",
+			"item": [
+				{
+					"name": "List Suppliers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" }
+						],
+						"url": {
+							"raw": "{{BASE_URL}}/suppliers",
+							"host": ["{{BASE_URL}}"],
+							"path": ["suppliers"]
+						}
+					}
+				},
+				{
+					"name": "Create Supplier",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{JWT_TOKEN}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Amul Dairy\",\n    \"phone\": \"9000011122\",\n    \"gst_number\": \"07AAAAA0000A1Z5\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/suppliers",
+							"host": ["{{BASE_URL}}"],
+							"path": ["suppliers"]
+						}
+					}
+				}
+			]
 		}
 	],
 	"variable": [
@@ -296,6 +374,16 @@
 		},
 		{
 			"key": "PRODUCT_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "CUSTOMER_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "SUPPLIER_ID",
 			"value": "",
 			"type": "string"
 		}

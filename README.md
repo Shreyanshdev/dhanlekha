@@ -54,6 +54,8 @@ dhanlekha/
 │   │       │   ├── users/                       # User CRUD (admin only)
 │   │       │   ├── branches/                    # Branch/Store management
 │   │       │   ├── products/                    # Product & Inventory APIs
+│   │       │   ├── customers/                   # Customer management & credit
+│   │       │   ├── suppliers/                   # Supplier management
 │   │       │   ├── tenants/                     # Tenant profiles
 │   │       │   └── health/                      # GET /api/v1/health
 │   │       ├── repositories/
@@ -61,6 +63,8 @@ dhanlekha/
 │   │       │   ├── branch.repo.ts               # Branch management
 │   │       │   ├── inventory.repo.ts            # Branch-scoped inventory
 │   │       │   ├── product.repo.ts              # Product catalog
+│   │       │   ├── customer.repo.ts             # Customer data & balances
+│   │       │   ├── supplier.repo.ts             # Supplier data
 │   │       │   ├── tenant.repo.ts
 │   │       │   └── user.repo.ts
 │   │       ├── database/
@@ -217,18 +221,47 @@ See [docs/sprint.md](docs/sprint.md) for the full execution plan and [docs/progr
 
 ---
 
-## API Endpoints (Sprint 0)
+## 🔌 API Reference
 
+The backend follows RESTful principles and returns standard JSON responses. All protected routes require a Bearer JWT token.
+
+### 🏥 System
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET    | `/api/v1/health` | System health check |
-| POST   | `/api/v1/auth/register` | Tenant onboarding |
-| POST   | `/api/v1/auth/login` | JWT Authentication |
-| GET    | `/api/v1/branches` | List stores/branches |
-| POST   | `/api/v1/products` | Create product + inventory |
-| POST   | `/api/v1/products/:id/adjust` | Branch-scoped stock adjustment |
+| GET | `/api/v1/health` | Service health status & connectivity |
 
-More endpoints will be added in subsequent sprints.
+### 🔐 Authentication & Identity
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/auth/register` | Register new tenant + admin user |
+| POST | `/api/v1/auth/login` | Authenticate & get JWT token |
+| GET | `/api/v1/users` | List staff members (Admin only) |
+| POST | `/api/v1/users` | Add new cashier or admin |
+| DELETE | `/api/v1/users/:id` | Soft-delete a user account |
+
+### 🏢 Store & Branch Management
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/tenants/me` | Get active tenant business profile |
+| GET | `/api/v1/branches` | List all physical store locations |
+| POST | `/api/v1/branches` | Create a new store branch |
+| PATCH | `/api/v1/branches/:id` | Update branch contact info/address |
+
+### 📦 Product & Inventory
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/products` | Search catalog & check branch stock |
+| POST | `/api/v1/products` | Add product with initial inventory |
+| GET | `/api/v1/products/low-stock` | List items below threshold alerts |
+| POST | `/api/v1/products/:id/adjust` | Manual stock correction with audit log |
+
+### 🤝 Business Partners (CRM/SRM)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/customers` | Search/list customers & udhaar balances |
+| POST | `/api/v1/customers` | Add customer with credit limit |
+| GET | `/api/v1/suppliers` | Search/list inventory suppliers |
+| POST | `/api/v1/suppliers` | Add supplier with GST details |
 
 ---
 

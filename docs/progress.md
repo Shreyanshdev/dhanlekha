@@ -4,10 +4,10 @@
 
 ---
 
-## Current Sprint: Sprint 3.5 — Branch Management & Scoping
-**Status:** ✅ Complete
+## Current Sprint: Sprint 5 — Billing Engine
+**Status:** 🔄 In Progress
 **Started:** 2026-05-02
-**Completed:** 2026-05-02 (Verified with E2E Security Tests)
+**Completed:** TBD
 
 ---
 
@@ -117,10 +117,20 @@
 | 5 | Security & Edge Case Verification | ✅ Done | Verified cross-tenant/cross-branch isolation |
 
 ### Sprint 4: Customer & Supplier Management
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Build people management APIs with credit tracking.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Create `customers`, `suppliers` tables | ✅ Done | Migration: `20260502090000_sprint4_customers_suppliers.ts` |
+| 2 | `POST /api/v1/customers` — create customer | ✅ Done | With credit limit support |
+| 3 | `GET /api/v1/customers` — list/search | ✅ Done | Search by name or phone |
+| 4 | `POST /api/v1/suppliers` — create supplier | ✅ Done | With GST number tracking |
+| 5 | `GET /api/v1/suppliers` — list/search | ✅ Done | Search by name or phone |
+| 6 | Soft-delete support for both | ✅ Done | Preserves history for billing |
 
 ### Sprint 5: Billing Engine
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 ### Sprint 6: Barcode-Based Billing
 **Status:** ⬜ Not Started
@@ -174,7 +184,7 @@
 | Phase | Sprints | Status |
 |-------|---------|--------|
 | Phase 1: Foundation | 0–2 | ✅ Complete |
-| Phase 2: Core ERP | 3–10 | 🔄 In Progress (4 ⬜) |
+| Phase 2: Core ERP | 3–10 | 🔄 In Progress (5 ⬜) |
 | Phase 3: System Features | 11–14 | ⬜ Not Started |
 | Phase 4: Performance & Production | 15–16 | ⬜ Not Started |
 | Phase 5: Frontend | 17–20 | ⬜ Not Started |

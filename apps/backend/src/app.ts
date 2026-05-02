@@ -13,6 +13,8 @@ import tenantsRoutes from './modules/tenants/tenants.routes';
 import usersRoutes from './modules/users/users.routes';
 import productsRoutes from './modules/products/products.routes';
 import branchesRoutes from './modules/branches/branches.routes';
+import customersRoutes from './modules/customers/customers.routes';
+import suppliersRoutes from './modules/suppliers/suppliers.routes';
 
 const app = express();
 
@@ -34,6 +36,8 @@ app.use('/api/v1/tenants', tenantsRoutes);
 app.use('/api/v1/users', usersRoutes);
 app.use('/api/v1/products', productsRoutes);
 app.use('/api/v1/branches', branchesRoutes);
+app.use('/api/v1/customers', customersRoutes);
+app.use('/api/v1/suppliers', suppliersRoutes);
 
 // ── 404 Handler ──
 app.use((_req, res) => {
