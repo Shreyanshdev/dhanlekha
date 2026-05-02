@@ -118,18 +118,21 @@ Every entity repository extends `BaseRepository<T>` which provides:
 
 ```typescript
 class BaseRepository<T> {
-  getQuery(trx?)      // Tenant-scoped + is_deleted=false (DEFAULT)
-  getRawQuery(trx?)   // Cross-tenant (login only, RARE)
-  getInsertQuery(trx?) // Raw insert builder
+  // Pass trx in constructor to lock the repo to a transaction
+  constructor(tenantId: string, tableName: string, trx?: Knex.Transaction)
 
-  findById(id, trx?)
-  findAll(trx?)
-  findAllSelect(columns, trx?)  // Safe column projection
-  findByIdSelect(id, columns, trx?)
-  create(data, trx?)
-  update(id, data, trx?)
-  softDelete(id, trx?)
-  count(filters, trx?)
+  getQuery()      // Tenant-scoped + is_deleted=false (DEFAULT)
+  getRawQuery()   // Cross-tenant (login only, RARE)
+  getInsertQuery() // Raw insert builder
+
+  findById(id)
+  findAll()
+  findAllSelect(columns)  // Safe column projection
+  findByIdSelect(id, columns)
+  create(data)
+  update(id, data)
+  softDelete(id)
+  count(filters)
 }
 ```
 
@@ -139,18 +142,19 @@ class BaseRepository<T> {
 // repositories/product.repo.ts
 import { BaseRepository } from './base.repo';
 import type { Product } from '@dhanlekha/shared';
+import { Knex } from 'knex';
 
 export class ProductRepository extends BaseRepository<Product> {
-  constructor(tenantId: string) {
-    super(tenantId, 'products');
+  constructor(tenantId: string, trx?: Knex.Transaction) {
+    super(tenantId, 'products', trx);
   }
 
-  async findByBarcode(barcode: string, trx?) {
-    return await this.getQuery(trx).where({ barcode }).first();
+  async findByBarcode(barcode: string) {
+    return await this.getQuery().where({ barcode }).first();
   }
 
-  async search(query: string, trx?) {
-    return await this.getQuery(trx)
+  async search(query: string) {
+    return await this.getQuery()
       .where('name', 'like', `%${query}%`)
       .orderBy('name');
   }
@@ -199,16 +203,20 @@ import { z } from 'zod';
 export const createProductSchema = z.object({
   name: z.string().min(2).max(200),
   barcode: z.string().min(3).max(50),
-  // ...
 });
+
+// ALWAYS export the inferred type so the service doesn't use `any`
+export type CreateProductInput = z.infer<typeof createProductSchema>;
 ```
 
 ### 2. Service (`{feature}.service.ts`)
 ```typescript
 // ✅ Imports repositories, NOT db
 import { ProductRepository } from '../../repositories/product.repo';
+// ✅ Imports inferred types
+import type { CreateProductInput } from './product.validator';
 
-export async function createProduct(tenantId: string, data: any) {
+export async function createProduct(tenantId: string, data: CreateProductInput) {
   const repo = new ProductRepository(tenantId);
   // Business logic here
 }
@@ -259,21 +267,37 @@ requestLogger → requireAuth → authorize(role) → validate(schema) → contr
 
 ---
 
-## Transaction Rules
+## Transaction Rules (Constructor Pattern)
 
-Use `withTransaction()` for any operation that modifies multiple tables:
+Use `withTransaction()` for any operation that modifies multiple tables.
+**Pass `trx` to the Repository constructor** so all methods called on that repo use the same transaction.
 
 ```typescript
 import { withTransaction } from '../../database/transaction';
 
 return await withTransaction(async (trx) => {
-  const repo = new ProductRepository(tenantId);
-  await repo.create(data, trx);        // Pass trx to every repo call
-  await inventoryRepo.create(inv, trx); // Same transaction
+  const productRepo = new ProductRepository(tenantId, trx);
+  const inventoryRepo = new InventoryRepository(tenantId, trx);
+  
+  await productRepo.create(productData);   // Implicitly uses trx
+  await inventoryRepo.create(invData);     // Implicitly uses trx
 });
 ```
 
 Required for: Invoice creation, Payment recording, Purchase recording, Stock adjustment.
+
+---
+
+## Sync Engine & Offline Conflicts (Sprint 11)
+
+DhanLekha is an offline-first system. The sync engine is the most complex part of the architecture and operates outside the standard 4-file pattern.
+
+1. **Client-side UUIDs:** All primary keys MUST be generated client-side (`uuidv4()`). Auto-increment IDs are strictly forbidden.
+2. **`sync_queue` Table:** Mobile/desktop clients write mutations to a local `sync_queue`.
+3. **Background Sync Worker (BullMQ):** A dedicated background worker (`src/jobs/syncWorker.ts`) replays these operations on the cloud database.
+4. **Conflict Resolution:** If a record is edited offline by two different cashiers, the worker applies a Last-Write-Wins (LWW) strategy based on a `last_modified_at` timestamp attached to the payload.
+
+*(Detailed sync documentation will be expanded during Sprint 11)*
 
 ---
 
