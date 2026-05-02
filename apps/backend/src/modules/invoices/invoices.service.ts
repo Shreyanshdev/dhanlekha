@@ -1,15 +1,19 @@
 import { v4 as uuidv4 } from 'uuid';
 import { InvoiceRepository } from '../../repositories/invoice.repo';
+import { ProductRepository } from '../../repositories/product.repo';
 import { InventoryRepository, InventoryLogRepository } from '../../repositories/inventory.repo';
 import { CustomerRepository } from '../../repositories/customer.repo';
 import { withTransaction } from '../../database/transaction';
 import { NotFoundError, BadRequestError } from '../../utils/errors';
 import type { CreateInvoiceInput } from './invoices.validator';
-import type { Invoice, InvoiceItem } from '@dhanlekha/shared';
+import type { Invoice, InvoiceItem, Product, Inventory } from '@dhanlekha/shared';
 
 /**
- * Atomic Invoice Creation Flow
- * Ensures financial correctness, inventory synchronization, and ledger accuracy.
+ * Atomic Invoice Creation Flow (Sprint 5 + Sprint 6)
+ *
+ * Supports TWO billing modes:
+ *   1. Barcode Scan — frontend sends { product_id, quantity } only → backend auto-fetches price/tax
+ *   2. Manual Entry — frontend sends { product_id, quantity, unit_price, gst_rate } → backend uses provided values
  */
 export async function createInvoice(
   tenantId: string,
@@ -24,7 +28,20 @@ export async function createInvoice(
     const logRepo = new InventoryLogRepository(tenantId, branchId, trx);
     const customerRepo = new CustomerRepository(tenantId, trx);
 
-    // 2. Recalculate Totals (Never trust frontend)
+    // 2. Batch-fetch Product & Inventory data (Sprint 6 optimization)
+    //    Single query per table instead of N+1 per item
+    const productIds = data.items.map(i => i.product_id);
+    const productRepo = new ProductRepository(tenantId, trx);
+
+    const [products, inventories] = await Promise.all([
+      productRepo.getQuery().whereIn('id', productIds) as Promise<Product[]>,
+      inventoryRepo.getQuery().whereIn('product_id', productIds) as Promise<Inventory[]>,
+    ]);
+
+    const productMap = new Map<string, Product>(products.map(p => [p.id, p]));
+    const inventoryMap = new Map<string, Inventory>(inventories.map(i => [i.product_id, i]));
+
+    // 3. Recalculate Totals (Never trust frontend)
     let subtotal = 0;
     let totalTax = 0;
     let totalDiscount = 0;
@@ -32,10 +49,31 @@ export async function createInvoice(
     const itemsToCreate: Partial<InvoiceItem>[] = [];
 
     for (const item of data.items) {
+      const product = productMap.get(item.product_id);
+      const inventory = inventoryMap.get(item.product_id);
+
+      if (!product) {
+        throw new NotFoundError(`Product ${item.product_id}`);
+      }
+      if (!inventory) {
+        throw new BadRequestError(`Product '${product.name}' has no inventory in this branch`);
+      }
+
+      // Sprint 6: Use frontend values if provided, otherwise auto-fetch from DB
+      const unitPrice = item.unit_price ?? Number(inventory.selling_price);
+      const gstRate = item.gst_rate ?? Number(product.gst_rate);
+
+      // Validate stock availability
+      if (Number(inventory.total_quantity) < item.quantity) {
+        throw new BadRequestError(
+          `Insufficient stock for '${product.name}'. Available: ${inventory.total_quantity}, Requested: ${item.quantity}`
+        );
+      }
+
       // Calculate item values
-      const itemSubtotal = item.unit_price * item.quantity;
+      const itemSubtotal = unitPrice * item.quantity;
       const itemTaxableAmount = itemSubtotal - item.discount_amount;
-      const itemTax = (itemTaxableAmount * item.gst_rate) / 100;
+      const itemTax = (itemTaxableAmount * gstRate) / 100;
       const itemTotal = itemTaxableAmount + itemTax;
 
       subtotal += itemSubtotal;
@@ -46,8 +84,8 @@ export async function createInvoice(
         id: uuidv4(),
         product_id: item.product_id,
         quantity: item.quantity,
-        unit_price: item.unit_price,
-        gst_rate: item.gst_rate,
+        unit_price: unitPrice,
+        gst_rate: gstRate,
         discount_amount: item.discount_amount,
         total: itemTotal,
       });
@@ -119,9 +157,10 @@ export async function createInvoice(
 
       // Get latest ledger entry to calculate running balance
       const latestEntry = await customerRepo.getLatestLedgerEntry(data.customer_id);
-      const currentBalance = latestEntry ? Number(latestEntry.running_balance) : Number(customer.total_due);
-      const newBalance = currentBalance + finalAmount; 
-      
+      const startBalance = latestEntry ? Number(latestEntry.running_balance) : Number(customer.total_due);
+
+      // A. Record Invoice Debit (full amount owed)
+      const balanceAfterInvoice = startBalance + finalAmount;
       await customerRepo.addLedgerEntry({
         id: uuidv4(),
         tenant_id: tenantId,
@@ -130,11 +169,27 @@ export async function createInvoice(
         reference_id: invoiceId,
         debit: finalAmount,
         credit: 0,
-        running_balance: newBalance,
+        running_balance: balanceAfterInvoice,
       });
 
-      // Sync the denormalized total_due on customer
-      await customerRepo.updateBalance(data.customer_id, finalAmount);
+      // B. Record Payment Credit (if any payment made at time of billing)
+      let finalBalance = balanceAfterInvoice;
+      if (data.amount_paid > 0) {
+        finalBalance = balanceAfterInvoice - data.amount_paid;
+        await customerRepo.addLedgerEntry({
+          id: uuidv4(),
+          tenant_id: tenantId,
+          customer_id: data.customer_id,
+          entry_type: 'payment',
+          reference_id: invoiceId,
+          debit: 0,
+          credit: data.amount_paid,
+          running_balance: finalBalance,
+        });
+      }
+
+      // Sync denormalized total_due (only the unpaid portion)
+      await customerRepo.updateBalance(data.customer_id, amountDue);
     }
 
     return (await invoiceRepo.findById(invoiceId)) as Invoice;
@@ -193,7 +248,7 @@ export async function cancelInvoice(
     const logRepo = new InventoryLogRepository(tenantId, branchId, trx);
     const customerRepo = new CustomerRepository(tenantId, trx);
 
-    const invoice = await invoiceRepo.findById(invoiceId);
+    const invoice = await invoiceRepo.findIncludingDeleted(invoiceId);
     if (!invoice) throw new NotFoundError('Invoice');
     if (invoice.status === 'cancelled') throw new BadRequestError('Invoice is already cancelled');
 
@@ -221,7 +276,8 @@ export async function cancelInvoice(
     if (invoice.customer_id) {
       const latestEntry = await customerRepo.getLatestLedgerEntry(invoice.customer_id);
       const currentBalance = latestEntry ? Number(latestEntry.running_balance) : 0;
-      const newBalance = currentBalance - Number(invoice.final_amount);
+      const reversalAmount = Number(invoice.amount_due); // Only reverse the unpaid portion
+      const newBalance = currentBalance - reversalAmount;
 
       await customerRepo.addLedgerEntry({
         id: uuidv4(),
@@ -230,11 +286,12 @@ export async function cancelInvoice(
         entry_type: 'adjustment',
         reference_id: invoiceId,
         debit: 0,
-        credit: invoice.final_amount,
+        credit: reversalAmount,
         running_balance: newBalance,
       });
 
-      await customerRepo.updateBalance(invoice.customer_id, -Number(invoice.final_amount));
+      // Reverse only the amount_due (what was actually owed)
+      await customerRepo.updateBalance(invoice.customer_id, -reversalAmount);
     }
   });
 }

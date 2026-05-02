@@ -26,8 +26,9 @@ export class BaseRepository<T> {
   /**
    * Base query builder with tenant isolation + soft-delete filter.
    * Override in child repos for global tables (tenants, plans).
+   * Public to allow batch queries (e.g., whereIn) from the service layer.
    */
-  protected getQuery(): Knex.QueryBuilder {
+  public getQuery(): Knex.QueryBuilder {
     const qb = this.trx ? this.trx(this.tableName) : db(this.tableName);
     return qb.where({ tenant_id: this.tenantId, is_deleted: false });
   }
@@ -119,7 +120,7 @@ export class BranchScopedRepository<T> extends BaseRepository<T> {
     this.branchId = branchId;
   }
 
-  protected getQuery(): Knex.QueryBuilder {
+  public getQuery(): Knex.QueryBuilder {
     return super.getQuery().where({ branch_id: this.branchId });
   }
 

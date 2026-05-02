@@ -9,7 +9,7 @@ export class InventoryRepository extends BranchScopedRepository<Inventory> {
     super(tenantId, branchId, 'inventory', trx);
   }
 
-  protected getQuery(): Knex.QueryBuilder {
+  public getQuery(): Knex.QueryBuilder {
     const qb = this.trx ? this.trx(this.tableName) : db(this.tableName);
     return qb.where({ tenant_id: this.tenantId, branch_id: this.branchId }); // No is_deleted column
   }
@@ -80,7 +80,7 @@ export class InventoryBatchRepository extends BranchScopedRepository<InventoryBa
     super(tenantId, branchId, 'inventory_batches', trx);
   }
 
-  protected getQuery(): Knex.QueryBuilder {
+  public getQuery(): Knex.QueryBuilder {
     const qb = this.trx ? this.trx(this.tableName) : db(this.tableName);
     return qb.where({ tenant_id: this.tenantId, branch_id: this.branchId }); // No is_deleted column
   }
@@ -120,7 +120,7 @@ export class InventoryLogRepository extends BranchScopedRepository<InventoryLog>
     super(tenantId, branchId, 'inventory_logs', trx);
   }
 
-  protected getQuery(): Knex.QueryBuilder {
+  public getQuery(): Knex.QueryBuilder {
     const qb = this.trx ? this.trx(this.tableName) : db(this.tableName);
     return qb.where({ tenant_id: this.tenantId, branch_id: this.branchId }); // No is_deleted column
   }

@@ -15,9 +15,10 @@ export async function listProducts(req: Request, res: Response, next: NextFuncti
 
 export async function getByBarcode(req: Request, res: Response, next: NextFunction) {
   try {
-    const tenantId = req.user!.tenantId;
+    const { tenantId, branchId } = req.user!;
+    if (!branchId) throw new Error('Branch context is required for barcode lookup');
     const { code } = req.params;
-    const product = await productsService.findProductByBarcode(tenantId, code);
+    const product = await productsService.findProductByBarcode(tenantId, branchId, code);
     return success(res, product);
   } catch (error) {
     next(error);

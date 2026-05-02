@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { ConflictError, NotFoundError, BusinessRuleError } from '../../utils/errors';
 import { UserRepository } from '../../repositories/user.repo';
-import type { UserPublic } from '@dhanlekha/shared';
+import type { User, UserPublic } from '@dhanlekha/shared';
 import type { CreateUserInput, UpdateUserInput } from './users.validator';
 
 /**
@@ -44,7 +44,7 @@ export async function createUser(tenantId: string, data: CreateUserInput): Promi
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
 
-  await repo.create({
+  const newUser: Partial<User> = {
     id: userId,
     tenant_id: tenantId,
     branch_id: data.branch_id || null,
@@ -52,7 +52,8 @@ export async function createUser(tenantId: string, data: CreateUserInput): Promi
     email,
     password_hash: passwordHash,
     role,
-  } as any);
+  };
+  await repo.create(newUser);
 
   return {
     id: userId,
@@ -102,7 +103,7 @@ export async function updateUser(tenantId: string, userId: string, data: UpdateU
   if (data.branch_id !== undefined) updatePayload.branch_id = data.branch_id;
 
   if (Object.keys(updatePayload).length > 0) {
-    await repo.update(userId, updatePayload as any);
+    await repo.update(userId, updatePayload as Partial<User>);
   }
 
   return await getUserById(tenantId, userId);
