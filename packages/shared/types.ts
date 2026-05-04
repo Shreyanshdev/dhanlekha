@@ -219,6 +219,38 @@ export interface CustomerLedger {
   created_at: string;
 }
 
+// ─── Payments (Sprint 7) ───
+
+export type PaymentMode = 'cash' | 'upi' | 'card' | 'bank_transfer' | 'cheque';
+export type PaymentStatus = 'received' | 'fully_allocated' | 'partially_allocated';
+
+export interface Payment {
+  id: string;
+  tenant_id: string;
+  branch_id: string;
+  customer_id: string | null;
+  created_by: string;
+  amount: number;                    // Total received, in paise
+  unallocated_amount: number;        // Remaining unallocated, in paise
+  payment_mode: PaymentMode;
+  status: PaymentStatus;
+  reference_number: string | null;   // UPI txn ID / cheque number / bank ref
+  note: string | null;
+  payment_date: string;              // YYYY-MM-DD local date
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentAllocation {
+  id: string;
+  tenant_id: string;
+  payment_id: string;
+  invoice_id: string;
+  allocated_amount: number;          // In paise
+  created_at: string;
+}
+
 // ─── API Response Contracts ───
 
 export interface ApiResponse<T> {

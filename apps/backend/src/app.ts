@@ -16,6 +16,7 @@ import branchesRoutes from './modules/branches/branches.routes';
 import customersRoutes from './modules/customers/customers.routes';
 import suppliersRoutes from './modules/suppliers/suppliers.routes';
 import invoicesRoutes from './modules/invoices/invoices.routes';
+import paymentsRoutes from './modules/payments/payments.routes';
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/v1/branches', branchesRoutes);
 app.use('/api/v1/customers', customersRoutes);
 app.use('/api/v1/suppliers', suppliersRoutes);
 app.use('/api/v1/invoices', invoicesRoutes);
+app.use('/api/v1/payments', paymentsRoutes);
 
 // ── 404 Handler ──
 app.use((_req, res) => {
