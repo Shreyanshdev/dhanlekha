@@ -264,14 +264,22 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 | GET | `/api/v1/suppliers` | Search/list inventory suppliers |
 | POST | `/api/v1/suppliers` | Add supplier with GST details |
 
-### 🧾 Billing & Invoicing (Sprint 5)
+### 🧾 Billing & Invoicing (Sprint 5 & 6)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/v1/invoices` | Create atomic invoice (stock + ledger sync) |
 | GET | `/api/v1/invoices` | List billing history (paginated) |
 | GET | `/api/v1/invoices/:id` | Get full invoice detail with items |
 | DELETE | `/api/v1/invoices/:id` | Cancel invoice & reverse stock/ledger |
-| GET | `/api/v1/products/barcode/:code` | Fast barcode lookup |
+| GET | `/api/v1/products/barcode/:code` | (Sprint 6) Fast barcode lookup — returns product + inventory |
+
+### 💰 Payments (Sprint 7)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/payments` | Record payment; optionally allocate to invoices |
+| GET | `/api/v1/payments` | List payments (paginated, filterable by customer/status/mode) |
+| GET | `/api/v1/payments/:id` | Get payment detail with allocations |
+| POST | `/api/v1/payments/:id/allocate` | Allocate advance payment to specific invoices |
 
 ---
 

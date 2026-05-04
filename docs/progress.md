@@ -4,10 +4,10 @@
 
 ---
 
-## Current Sprint: Sprint 6 — Barcode-Based Billing (Backend Enhancement)
+## Current Sprint: Sprint 7 — Payment System
 **Status:** ✅ Complete
-**Started:** 2026-05-02
-**Completed:** 2026-05-02
+**Started:** 2026-05-04
+**Completed:** 2026-05-04
 
 ---
 
@@ -154,7 +154,18 @@
 | 3 | Bulk Scan Optimization | ✅ Done | O(1) query batch-fetching for products and inventory in `createInvoice` |
 
 ### Sprint 7: Payment System
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Build flexible payment recording with multi-invoice allocation.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Migration: `payments` + `payment_allocations` tables | ✅ Done | Proper FKs, indices, unique constraint on `(payment_id, invoice_id)` |
+| 2 | `POST /api/v1/payments` — Record + allocate payment | ✅ Done | Atomic 8-step workflow inside `withTransaction` |
+| 3 | `POST /api/v1/payments/:id/allocate` — Advance payment allocation | ✅ Done | Allocates unallocated credit to new invoices |
+| 4 | `GET /api/v1/payments` — List with pagination & filters | ✅ Done | Filterable by customer, status, payment mode |
+| 5 | `GET /api/v1/payments/:id` — Detail with allocations | ✅ Done | Batch-fetches allocations for list as well |
+| 6 | Customer ledger + `total_due` sync on payment | ✅ Done | Correct credit entry + balance decrement |
+| 7 | Payment Stress Test | ✅ Done | Passed 38/38 assertions in `sprint7_test.js` |
 
 ### Sprint 8: Ledger System
 **Status:** ⬜ Not Started
