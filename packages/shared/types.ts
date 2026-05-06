@@ -204,6 +204,7 @@ export interface InvoiceItem {
   unit_price: number;
   gst_rate: number;
   discount_amount: number;
+  offer_id: string | null;          // FK → offers.id (Sprint 10)
   total: number;
 }
 
@@ -321,6 +322,34 @@ export interface Expense {
   created_at: string;
   updated_at: string;
   is_deleted: boolean;
+}
+
+// ─── Offers & Discounts (Sprint 10) ───
+
+export type OfferType = 'flat' | 'percentage' | 'bogo' | 'bundle';
+export type OfferScope = 'product' | 'category' | 'invoice' | 'customer';
+
+export interface Offer {
+  id: string;
+  tenant_id: string;
+  branch_id: string | null;         // NULL = all branches
+  name: string;
+  offer_type: OfferType;
+  discount_value: number;           // Amount (flat) or percentage (percentage) or buy qty (bogo)
+  applies_to: OfferScope;
+  applies_to_id: string | null;     // Product/Customer UUID; NULL for invoice/category scope
+  applies_to_category: string | null; // Category name when applies_to='category'
+  min_purchase_amount: number;
+  max_uses: number | null;          // NULL = unlimited
+  used_count: number;
+  buy_quantity: number | null;      // BOGO: buy N
+  get_quantity: number | null;      // BOGO: get M free
+  valid_from: string;               // YYYY-MM-DD
+  valid_until: string;              // YYYY-MM-DD
+  is_active: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 // ─── API Response Contracts ───

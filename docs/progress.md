@@ -4,10 +4,10 @@
 
 ---
 
-## Current Sprint: Sprint 7 — Payment System
+## Current Sprint: Sprint 10 — Discount & Offer Engine
 **Status:** ✅ Complete
-**Started:** 2026-05-04
-**Completed:** 2026-05-04
+**Started:** 2026-05-06
+**Completed:** 2026-05-06
 
 ---
 
@@ -194,7 +194,17 @@
 | 6 | Reliability & Deep Testing | ✅ Done | Passed 18/18 test cases across basic and deep suites |
 
 ### Sprint 10: Discount & Offer Engine
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Build flexible promotion system with 4 offer types integrated with billing engine.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Offers Schema + `offer_id` FK on `invoice_items` | ✅ Done | Full indexing + usage tracking columns |
+| 2 | CRUD APIs (Create, Read, Update, Soft-delete) | ✅ Done | Admin-only write access |
+| 3 | Offer Matching Engine (`findBestOfferForItem`) | ✅ Done | Flat/Percentage/BOGO/Bundle logic |
+| 4 | Zod Validation (% cap, BOGO rules, date ranges) | ✅ Done | 4 business rule refinements |
+| 5 | Paginated Listing + Filters | ✅ Done | Type/Scope/Active/Date range filters |
+| 6 | Authorization & Soft-delete verification | ✅ Done | Passed 15/15 test cases |
 
 ### Sprint 11: Offline Sync Engine
 **Status:** ⬜ Not Started
@@ -233,7 +243,7 @@
 | Phase | Sprints | Status |
 |-------|---------|--------|
 | Phase 1: Foundation | 0–2 | ✅ Complete |
-| Phase 2: Core ERP | 3–10 | 🔄 In Progress (5 ⬜) |
+| Phase 2: Core ERP | 3–10 | ✅ Complete |
 | Phase 3: System Features | 11–14 | ⬜ Not Started |
 | Phase 4: Performance & Production | 15–16 | ⬜ Not Started |
 | Phase 5: Frontend | 17–20 | ⬜ Not Started |
