@@ -59,22 +59,26 @@ dhanlekha/
 │   │       │   ├── invoices/       # (Sprint 5-6) Atomic Billing Engine
 │   │       │   ├── payments/       # (Sprint 7) Payment Recording & Allocation
 │   │       │   ├── ledger/         # (Sprint 8) Financial Ledgers & Integrity
+│   │       │   ├── purchases/      # (Sprint 9) Stock-in & Supplier tracking
+│   │       │   ├── expenses/       # (Sprint 9) Operating cost management
 │   │       │   ├── tenants/        # SaaS Tenant management
 │   │       │   └── health/         # System status
 │   │       ├── repositories/
 │   │       │   ├── base.repo.ts          # Generic multi-tenant base
 │   │       │   ├── branch.repo.ts        # Branch-scoped queries
 │   │       │   ├── customer.repo.ts      # Customer profiles & balances
+│   │       │   ├── expense.repo.ts       # Operating costs
 │   │       │   ├── inventory.repo.ts     # Branch inventory logs
 │   │       │   ├── invoice.repo.ts       # Invoices & line items
 │   │       │   ├── payment.repo.ts       # Payments & allocations
 │   │       │   ├── product.repo.ts       # Product catalog & barcodes
+│   │       │   ├── purchase.repo.ts      # Stock-in recordings
 │   │       │   ├── supplier.repo.ts      # Supplier data
 │   │       │   ├── tenant.repo.ts        # Global tenant profiles
 │   │       │   └── user.repo.ts          # Staff accounts
 │   │       ├── database/
 │   │       │   ├── transaction.ts        # Atomic transaction helper
-│   │       │   ├── migrations/           # Knex migrations (Sprints 1-8)
+│   │       │   ├── migrations/           # Knex migrations (Sprints 1-9)
 │   │       │   └── seeds/                # Seed data (plans, default admins)
 │   │       └── utils/
 │   │           ├── errors.ts             # Custom HTTP error classes
@@ -93,6 +97,8 @@ dhanlekha/
 ├── api-testing/                    # Post-sprint API test suites
 │   ├── sprint7_test.js             # Payments verification
 │   ├── sprint8_test.js             # Ledger integrity verification
+│   ├── sprint9_test.js             # Purchases & Expenses basic
+│   ├── sprint9_deep_test.js        # Auth & Reliability deep-dive
 │   └── test_all_apis.js            # Full integration smoke test
 ├── docs/
 │   ├── srs.md                      # Requirement specs
@@ -279,15 +285,26 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 | GET | `/api/v1/invoices` | List billing history (paginated) |
 | GET | `/api/v1/invoices/:id` | Get full invoice detail with items |
 | DELETE | `/api/v1/invoices/:id` | Cancel invoice & reverse stock/ledger |
-| GET | `/api/v1/products/barcode/:code` | (Sprint 6) Fast barcode lookup — returns product + inventory |
+| GET | `/api/v1/products/barcode/:code` | Fast barcode lookup — returns product + inventory |
 
 ### 💰 Payments (Sprint 7)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/v1/payments` | Record payment; optionally allocate to invoices |
-| GET | `/api/v1/payments` | List payments (paginated, filterable by customer/status/mode) |
+| GET | `/api/v1/payments` | List payments (paginated, filterable) |
 | GET | `/api/v1/payments/:id` | Get payment detail with allocations |
 | POST | `/api/v1/payments/:id/allocate` | Allocate advance payment to specific invoices |
+
+### 🛒 Purchases & Expenses (Sprint 9)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/purchases` | Record stock-in (increments inventory + logs) |
+| GET | `/api/v1/purchases` | List purchase history (paginated) |
+| GET | `/api/v1/purchases/:id` | Get purchase detail with items |
+| POST | `/api/v1/expenses` | Record operating cost (Admin only) |
+| GET | `/api/v1/expenses` | List expenses (filterable by category/date) |
+| DELETE | `/api/v1/expenses/:id` | Soft-delete an expense entry |
+
 
 ---
 
