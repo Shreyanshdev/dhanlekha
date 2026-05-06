@@ -267,6 +267,62 @@ export interface LedgerSnapshot {
   created_at: string;
 }
 
+// ─── Purchases & Expenses (Sprint 9) ───
+
+export type PurchaseStatus = 'pending' | 'received' | 'cancelled';
+export type PurchasePaymentStatus = 'unpaid' | 'partial' | 'paid';
+
+export interface Purchase {
+  id: string;
+  tenant_id: string;
+  branch_id: string;
+  supplier_id: string;
+  purchase_number: string;
+  supplier_invoice_number: string | null;
+  subtotal: number;
+  tax_amount: number;
+  discount_amount: number;
+  total_amount: number;
+  paid_amount: number;
+  status: PurchaseStatus;
+  payment_status: PurchasePaymentStatus;
+  notes: string | null;
+  purchase_date: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  is_deleted: boolean;
+}
+
+export interface PurchaseItem {
+  id: string;
+  tenant_id: string;
+  purchase_id: string;
+  product_id: string;
+  quantity: number;
+  purchase_price: number; // Updated name
+  tax_rate: number;
+  tax_amount: number;
+  total: number;          // Updated name
+  batch_number: string | null;
+  expiry_date: string | null;
+}
+
+export interface Expense {
+  id: string;
+  tenant_id: string;
+  branch_id: string;
+  category: string;
+  amount: number;
+  note: string | null;     // Updated name
+  payment_mode: string;    // Added
+  expense_date: string;
+  recorded_by: string;    // Updated name
+  created_at: string;
+  updated_at: string;
+  is_deleted: boolean;
+}
+
 // ─── API Response Contracts ───
 
 export interface ApiResponse<T> {

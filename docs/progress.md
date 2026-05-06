@@ -180,8 +180,18 @@
 | 5 | Ledger snapshot logic for historical queries | ✅ Done | Automated periodic snapshotting |
 | 6 | Full API verification | ✅ Done | Passed 10/10 test cases in `ledger_test.js` |
 
-### Sprint 9: Purchase Management
-**Status:** ⬜ Not Started
+### Sprint 9: Purchase & Expense Management
+**Status:** ✅ Complete
+**Goal:** Implementation of stock-in (purchases) and operating costs (expenses) with inventory synchronization.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Purchase Schema (`purchases`, `purchase_items`) | ✅ Done | Normalized schema with tax and payment tracking |
+| 2 | Expense Schema (`expenses`) | ✅ Done | Categorized cost tracking with soft delete |
+| 3 | Atomic Purchase Workflow | ✅ Done | Syncs stock levels + updates latest cost price |
+| 4 | Inventory Logs Integration | ✅ Done | Immutable audit trail for every purchase |
+| 5 | Paginated Listing & Filtering | ✅ Done | Category/Date/Supplier filters for reports |
+| 6 | Reliability & Deep Testing | ✅ Done | Passed 18/18 test cases across basic and deep suites |
 
 ### Sprint 10: Discount & Offer Engine
 **Status:** ⬜ Not Started
