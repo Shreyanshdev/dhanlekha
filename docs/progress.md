@@ -4,7 +4,7 @@
 
 ---
 
-## Current Sprint: Sprint 10 — Discount & Offer Engine
+## Current Sprint: Sprint 11 — Offline Sync Engine
 **Status:** ✅ Complete
 **Started:** 2026-05-06
 **Completed:** 2026-05-06
@@ -207,7 +207,15 @@
 | 6 | Authorization & Soft-delete verification | ✅ Done | Passed 15/15 test cases |
 
 ### Sprint 11: Offline Sync Engine
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Build robust offline-first capabilities with conflict resolution.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Push sync with conflict resolution | ✅ Done | Deterministic logic |
+| 2 | Pull sync (version-based cursor) | ✅ Done | Efficient delta updates |
+| 3 | Device registry & version tracking | ✅ Done | Client-side tracking |
+| 4 | Status & Retry mechanisms | ✅ Done | Resilient sync |
 
 ### Sprint 12: Alerts & Notifications
 **Status:** ⬜ Not Started
@@ -244,6 +252,6 @@
 |-------|---------|--------|
 | Phase 1: Foundation | 0–2 | ✅ Complete |
 | Phase 2: Core ERP | 3–10 | ✅ Complete |
-| Phase 3: System Features | 11–14 | ⬜ Not Started |
+| Phase 3: System Features | 11–14 | 🔄 In Progress (3 ⬜) |
 | Phase 4: Performance & Production | 15–16 | ⬜ Not Started |
 | Phase 5: Frontend | 17–20 | ⬜ Not Started |

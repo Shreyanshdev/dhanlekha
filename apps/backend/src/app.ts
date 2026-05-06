@@ -21,6 +21,7 @@ import ledgerRoutes from './modules/ledger/ledger.routes';
 import purchasesRoutes from './modules/purchases/purchases.routes';
 import expensesRoutes from './modules/expenses/expenses.routes';
 import offersRoutes from './modules/offers/offers.routes';
+import syncRoutes from './modules/sync/sync.routes';
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use('/api/v1', ledgerRoutes);
 app.use('/api/v1/purchases', purchasesRoutes);
 app.use('/api/v1/expenses', expensesRoutes);
 app.use('/api/v1/offers', offersRoutes);
+app.use('/api/v1/sync', syncRoutes);
 
 // ── 404 Handler ──
 app.use((_req, res) => {
