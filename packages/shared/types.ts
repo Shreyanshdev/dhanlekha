@@ -352,6 +352,37 @@ export interface Offer {
   updated_at: string;
 }
 
+// ─── Sync Engine (Sprint 11) ───
+
+export type SyncAction = 'insert' | 'update' | 'delete';
+export type ConflictStrategy = 'server_wins' | 'client_wins' | 'manual';
+
+export interface SyncQueueEntry {
+  id: string;
+  tenant_id: string;
+  table_name: string;
+  record_id: string;
+  action: SyncAction;
+  version: number;
+  device_id: string;
+  conflict_strategy: ConflictStrategy;
+  payload: Record<string, any> | null;  // Snapshot of changed data
+  is_synced: boolean;
+  error_message: string | null;
+  created_at: string;
+  synced_at: string | null;
+}
+
+export interface SyncDevice {
+  id: string;
+  tenant_id: string;
+  device_id: string;
+  device_name: string | null;
+  last_version: number;
+  last_seen_at: string | null;
+  created_at: string;
+}
+
 // ─── API Response Contracts ───
 
 export interface ApiResponse<T> {

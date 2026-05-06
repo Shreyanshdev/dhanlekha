@@ -62,6 +62,7 @@ dhanlekha/
 │   │       │   ├── purchases/      # (Sprint 9) Stock-in & Supplier tracking
 │   │       │   ├── expenses/       # (Sprint 9) Operating cost management
 │   │       │   ├── offers/         # (Sprint 10) Discount & Promotion engine
+│   │       │   ├── sync/           # (Sprint 11) Offline Sync Engine
 │   │       │   ├── tenants/        # SaaS Tenant management
 │   │       │   └── health/         # System status
 │   │       ├── repositories/
@@ -74,6 +75,7 @@ dhanlekha/
 │   │       │   ├── payment.repo.ts       # Payments & allocations
 │   │       │   ├── product.repo.ts       # Product catalog & barcodes
 │   │       │   ├── offer.repo.ts         # Promotions & discounts
+│   │       │   ├── sync.repo.ts          # Offline sync queue & devices
 │   │       │   ├── purchase.repo.ts      # Stock-in recordings
 │   │       │   ├── supplier.repo.ts      # Supplier data
 │   │       │   ├── tenant.repo.ts        # Global tenant profiles
@@ -209,7 +211,7 @@ AI Service (Python FastAPI) — optional
 |-------|---------|-------|--------|
 | Phase 1 | 0–2 | Backend infrastructure, auth, SaaS | ✅ Complete |
 | Phase 2 | 3–10 | Core ERP backend APIs | ✅ Complete |
-| Phase 3 | 11–14 | System features (sync, alerts, AI) | ⬜ Not Started |
+| Phase 3 | 11–14 | System features (sync, alerts, AI) | 🔄 In Progress |
 | Phase 4 | 15–16 | Performance & production readiness | ⬜ Not Started |
 | Phase 5 | 17–20 | Frontend (after backend is complete) | ⬜ Not Started |
 
@@ -315,7 +317,16 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 | GET | `/api/v1/offers` | List offers (filterable by type/scope/active/date) |
 | GET | `/api/v1/offers/:id` | Get offer detail |
 | PATCH | `/api/v1/offers/:id` | Update offer fields (Admin only) |
-| DELETE | `/api/v1/offers/:id` | Soft-delete an offer (Admin only) |
+| DELETE | `/api/v1/offers/:id` | Soft-delete offer (Admin only) |
+
+### 🔄 Sync Engine (Sprint 11)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/sync/push` | Push offline changes to cloud |
+| GET | `/api/v1/sync/pull` | Pull new changes from cloud |
+| GET | `/api/v1/sync/status` | Get sync queue health |
+| GET | `/api/v1/sync/queue` | List sync queue (Admin only) |
+| GET | `/api/v1/sync/devices` | List registered devices |
 
 
 ---
