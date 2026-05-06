@@ -61,6 +61,7 @@ dhanlekha/
 │   │       │   ├── ledger/         # (Sprint 8) Financial Ledgers & Integrity
 │   │       │   ├── purchases/      # (Sprint 9) Stock-in & Supplier tracking
 │   │       │   ├── expenses/       # (Sprint 9) Operating cost management
+│   │       │   ├── offers/         # (Sprint 10) Discount & Promotion engine
 │   │       │   ├── tenants/        # SaaS Tenant management
 │   │       │   └── health/         # System status
 │   │       ├── repositories/
@@ -72,13 +73,14 @@ dhanlekha/
 │   │       │   ├── invoice.repo.ts       # Invoices & line items
 │   │       │   ├── payment.repo.ts       # Payments & allocations
 │   │       │   ├── product.repo.ts       # Product catalog & barcodes
+│   │       │   ├── offer.repo.ts         # Promotions & discounts
 │   │       │   ├── purchase.repo.ts      # Stock-in recordings
 │   │       │   ├── supplier.repo.ts      # Supplier data
 │   │       │   ├── tenant.repo.ts        # Global tenant profiles
 │   │       │   └── user.repo.ts          # Staff accounts
 │   │       ├── database/
 │   │       │   ├── transaction.ts        # Atomic transaction helper
-│   │       │   ├── migrations/           # Knex migrations (Sprints 1-9)
+│   │       │   ├── migrations/           # Knex migrations (Sprints 1-10)
 │   │       │   └── seeds/                # Seed data (plans, default admins)
 │   │       └── utils/
 │   │           ├── errors.ts             # Custom HTTP error classes
@@ -99,6 +101,7 @@ dhanlekha/
 │   ├── sprint8_test.js             # Ledger integrity verification
 │   ├── sprint9_test.js             # Purchases & Expenses basic
 │   ├── sprint9_deep_test.js        # Auth & Reliability deep-dive
+│   ├── sprint10_test.js            # Offers CRUD & validation
 │   └── test_all_apis.js            # Full integration smoke test
 ├── docs/
 │   ├── srs.md                      # Requirement specs
@@ -205,7 +208,7 @@ AI Service (Python FastAPI) — optional
 | Phase | Sprints | Focus | Status |
 |-------|---------|-------|--------|
 | Phase 1 | 0–2 | Backend infrastructure, auth, SaaS | ✅ Complete |
-| Phase 2 | 3–10 | Core ERP backend APIs | 🔄 In Progress |
+| Phase 2 | 3–10 | Core ERP backend APIs | ✅ Complete |
 | Phase 3 | 11–14 | System features (sync, alerts, AI) | ⬜ Not Started |
 | Phase 4 | 15–16 | Performance & production readiness | ⬜ Not Started |
 | Phase 5 | 17–20 | Frontend (after backend is complete) | ⬜ Not Started |
@@ -304,6 +307,15 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 | POST | `/api/v1/expenses` | Record operating cost (Admin only) |
 | GET | `/api/v1/expenses` | List expenses (filterable by category/date) |
 | DELETE | `/api/v1/expenses/:id` | Soft-delete an expense entry |
+
+### 🏷️ Offers & Discounts (Sprint 10)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/offers` | Create offer (flat/percentage/BOGO/bundle) |
+| GET | `/api/v1/offers` | List offers (filterable by type/scope/active/date) |
+| GET | `/api/v1/offers/:id` | Get offer detail |
+| PATCH | `/api/v1/offers/:id` | Update offer fields (Admin only) |
+| DELETE | `/api/v1/offers/:id` | Soft-delete an offer (Admin only) |
 
 
 ---
