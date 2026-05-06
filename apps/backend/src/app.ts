@@ -17,6 +17,7 @@ import customersRoutes from './modules/customers/customers.routes';
 import suppliersRoutes from './modules/suppliers/suppliers.routes';
 import invoicesRoutes from './modules/invoices/invoices.routes';
 import paymentsRoutes from './modules/payments/payments.routes';
+import ledgerRoutes from './modules/ledger/ledger.routes';
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/v1/customers', customersRoutes);
 app.use('/api/v1/suppliers', suppliersRoutes);
 app.use('/api/v1/invoices', invoicesRoutes);
 app.use('/api/v1/payments', paymentsRoutes);
+app.use('/api/v1', ledgerRoutes);
 
 // ── 404 Handler ──
 app.use((_req, res) => {

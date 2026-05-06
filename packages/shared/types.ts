@@ -216,6 +216,8 @@ export interface CustomerLedger {
   debit: number;
   credit: number;
   running_balance: number;
+  notes: string | null;
+  created_by: string | null;
   created_at: string;
 }
 
@@ -248,6 +250,20 @@ export interface PaymentAllocation {
   payment_id: string;
   invoice_id: string;
   allocated_amount: number;          // In paise
+  created_at: string;
+}
+
+// ─── Ledger Snapshots (Sprint 8) ───
+
+export interface LedgerSnapshot {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  snapshot_date: string;             // YYYY-MM-DD
+  closing_balance: number;           // In paise
+  total_debit: number;
+  total_credit: number;
+  entry_count: number;
   created_at: string;
 }
 

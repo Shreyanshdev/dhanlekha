@@ -50,60 +50,61 @@ dhanlekha/
 │   │       │   ├── requestLogger.middleware.ts  # Request logging
 │   │       │   └── validate.middleware.ts       # Zod validation factory
 │   │       ├── modules/
-│   │       │   ├── auth/                        # Register, login endpoints
-│   │       │   ├── users/                       # User CRUD (admin only)
-│   │       │   ├── branches/                    # Branch/Store management
-│   │       │   ├── products/                    # Product & Inventory APIs
-│   │       │   ├── customers/                   # Customer management & credit
-│   │       │   ├── suppliers/                   # Supplier management
-│   │       │   ├── tenants/                     # Tenant profiles
-│   │       │   └── health/                      # GET /api/v1/health
+│   │       │   ├── auth/           # Login & Registration
+│   │       │   ├── users/          # Staff management
+│   │       │   ├── branches/       # Multi-location management
+│   │       │   ├── products/       # Catalog & Inventory
+│   │       │   ├── customers/      # CRM & Credit management
+│   │       │   ├── suppliers/      # SRM & Procurement
+│   │       │   ├── invoices/       # (Sprint 5-6) Atomic Billing Engine
+│   │       │   ├── payments/       # (Sprint 7) Payment Recording & Allocation
+│   │       │   ├── ledger/         # (Sprint 8) Financial Ledgers & Integrity
+│   │       │   ├── tenants/        # SaaS Tenant management
+│   │       │   └── health/         # System status
 │   │       ├── repositories/
-│   │       │   ├── base.repo.ts                 # Base multi-tenant repo
-│   │       │   ├── branch.repo.ts               # Branch management
-│   │       │   ├── inventory.repo.ts            # Branch-scoped inventory
-│   │       │   ├── product.repo.ts              # Product catalog
-│   │       │   ├── customer.repo.ts             # Customer profile & financial ledger
-│   │       │   ├── supplier.repo.ts             # Supplier data
-│       │   ├── invoice.repo.ts              # Invoices, items, and sequences
-│   │       │   ├── tenant.repo.ts
-│   │       │   └── user.repo.ts
+│   │       │   ├── base.repo.ts          # Generic multi-tenant base
+│   │       │   ├── branch.repo.ts        # Branch-scoped queries
+│   │       │   ├── customer.repo.ts      # Customer profiles & balances
+│   │       │   ├── inventory.repo.ts     # Branch inventory logs
+│   │       │   ├── invoice.repo.ts       # Invoices & line items
+│   │       │   ├── payment.repo.ts       # Payments & allocations
+│   │       │   ├── product.repo.ts       # Product catalog & barcodes
+│   │       │   ├── supplier.repo.ts      # Supplier data
+│   │       │   ├── tenant.repo.ts        # Global tenant profiles
+│   │       │   └── user.repo.ts          # Staff accounts
 │   │       ├── database/
-│   │       │   ├── transaction.ts               # withTransaction helper
-│   │       │   ├── migrations/                  # Knex migrations (Sprint 1+)
-│   │       │   └── seeds/                       # Knex seed data (Sprint 1+)
+│   │       │   ├── transaction.ts        # Atomic transaction helper
+│   │       │   ├── migrations/           # Knex migrations (Sprints 1-8)
+│   │       │   └── seeds/                # Seed data (plans, default admins)
 │   │       └── utils/
-│   │           ├── errors.ts                    # Error classes (400/401/403/404/409/422)
-│   │           └── response.ts                  # Standard response helpers
+│   │           ├── errors.ts             # Custom HTTP error classes
+│   │           └── response.ts           # Standard API response helpers
 │   ├── frontend/                   # Next.js + Electron (Sprint 17+)
 │   │   └── package.json
 │   └── ai-service/                 # Python FastAPI (Sprint 14+)
 │       └── README.md
 ├── packages/
-│   └── shared/                     # Shared utilities & types
-│       ├── api.ts                  # Axios client factory with interceptors
-│       ├── index.ts                # Main export
-│       ├── types.ts                # Shared TS interfaces (User, Tenant, etc)
+│   └── shared/                     # Monorepo shared package
+│       ├── api.ts                  # Shared Axios client logic
+│       ├── index.ts                # Main export entry
+│       ├── types.ts                # Universal TS interfaces (Invoice, Payment, etc)
 │       ├── tsconfig.json
 │       └── package.json
+├── api-testing/                    # Post-sprint API test suites
+│   ├── sprint7_test.js             # Payments verification
+│   ├── sprint8_test.js             # Ledger integrity verification
+│   └── test_all_apis.js            # Full integration smoke test
 ├── docs/
-│   ├── srs.md                      # Software Requirements Specification
-│   ├── db.md                       # Database schema (25 tables)
-│   ├── techstack.md                # Technology stack decisions
-│   ├── sprint.md                   # Sprint execution plan (21 sprints)
-│   └── progress.md                 # Sprint progress tracker
-├── .agents/skills/                 # AI agent skill definitions
-│   ├── api-design/
-│   ├── backend-development/
-│   ├── billing-logic/
-│   ├── code-review/
-│   ├── database-enforcement/
-│   └── erp-context/
-├── docker-compose.yml              # PostgreSQL + Redis + Backend
-├── turbo.json                      # Turborepo configuration
-├── package.json                    # Root monorepo config
+│   ├── srs.md                      # Requirement specs
+│   ├── db.md                       # Data modeling
+│   ├── progress.md                 # Sprint tracking
+│   └── sprint.md                   # Execution plan
+├── .agents/skills/                 # AI agent skill definitions (api, backend, etc)
+├── docker-compose.yml              # Dev infra (PG, Redis)
+├── turbo.json                      # Build system config
+├── package.json                    # Workspace root
 ├── master-context.md               # Master document index
-├── .env                            # Environment variables
+├── .env                            # Environment secrets
 └── .gitignore
 ```
 
@@ -239,6 +240,13 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 | GET | `/api/v1/users` | List staff members (Admin only) |
 | POST | `/api/v1/users` | Add new cashier or admin |
 | DELETE | `/api/v1/users/:id` | Soft-delete a user account |
+
+### 📈 Ledger System (Sprint 8)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/customers/:id/ledger` | Chronological ledger entries (paginated) |
+| GET | `/api/v1/customers/:id/balance` | Current balance + integrity check summary |
+| POST | `/api/v1/ledger/adjust` | Manual debit/credit adjustment (Admin only) |
 
 ### 🏢 Store & Branch Management
 | Method | Endpoint | Description |

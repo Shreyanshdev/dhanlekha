@@ -168,7 +168,17 @@
 | 7 | Payment Stress Test | ✅ Done | Passed 38/38 assertions in `sprint7_test.js` |
 
 ### Sprint 8: Ledger System
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Advanced ledger management, snapshots, and balance integrity.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Ledger schema (snapshots + audit columns) | ✅ Done | Added `balance_snapshot` and audit triggers |
+| 2 | Paginated ledger API (`GET /customers/:id/ledger`) | ✅ Done | Efficient cursor-based pagination |
+| 3 | Balance summary + Integrity check API (`GET /customers/:id/balance`) | ✅ Done | Verifies sum of entries vs stored balance |
+| 4 | Atomic manual adjustments (Admin only) | ✅ Done | `POST /api/v1/ledger/adjust` with audit reasons |
+| 5 | Ledger snapshot logic for historical queries | ✅ Done | Automated periodic snapshotting |
+| 6 | Full API verification | ✅ Done | Passed 10/10 test cases in `ledger_test.js` |
 
 ### Sprint 9: Purchase Management
 **Status:** ⬜ Not Started
