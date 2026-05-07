@@ -24,6 +24,7 @@ import offersRoutes from './modules/offers/offers.routes';
 import syncRoutes from './modules/sync/sync.routes';
 import alertsRoutes from './modules/alerts/alerts.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
+import aiRoutes from './modules/ai/ai.routes';
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use('/api/v1/offers', offersRoutes);
 app.use('/api/v1/sync', syncRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/ai', aiRoutes);
 
 // ── 404 Handler ──
 app.use((_req, res) => {

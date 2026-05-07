@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "dev:backend": "npm run dev --workspace=apps/backend",
+    "dev:ai": "npm run dev --workspace=apps/ai-service",
     "dev:frontend": "npm run dev --workspace=apps/frontend",
     "build": "turbo run build",
     "lint": "turbo run lint",

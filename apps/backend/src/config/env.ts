@@ -31,6 +31,12 @@ const env = {
     secret: process.env.JWT_SECRET || 'dev_jwt_secret_change_in_production',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
+
+  // AI Service
+  ai: {
+    baseUrl: process.env.AI_SERVICE_URL || 'http://localhost:8000',
+    timeout: parseInt(process.env.AI_TIMEOUT, 10) || 5000,
+  },
 };
 
 export default env;

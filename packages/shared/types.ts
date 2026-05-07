@@ -413,6 +413,20 @@ export interface DailyMetric {
   created_at: string;
 }
 
+// ─── AI Integration (Sprint 14) ───
+
+export interface ProductAiData {
+  id: string;
+  product_id: string;
+  normalized_name: string;
+  predicted_category: string | null;
+  tags: string[] | null;
+  price_suggestion: number | null;
+  confidence_score: number | null;
+  last_used_at: string | null;
+  updated_at: string;
+}
+
 // ─── API Response Contracts ───
 
 export interface ApiResponse<T> {
