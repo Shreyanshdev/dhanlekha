@@ -63,6 +63,7 @@ dhanlekha/
 │   │       │   ├── expenses/       # (Sprint 9) Operating cost management
 │   │       │   ├── offers/         # (Sprint 10) Discount & Promotion engine
 │   │       │   ├── sync/           # (Sprint 11) Offline Sync Engine
+│   │       │   ├── alerts/         # (Sprint 12) System Alerts & Notifications
 │   │       │   ├── tenants/        # SaaS Tenant management
 │   │       │   └── health/         # System status
 │   │       ├── repositories/
@@ -76,6 +77,7 @@ dhanlekha/
 │   │       │   ├── product.repo.ts       # Product catalog & barcodes
 │   │       │   ├── offer.repo.ts         # Promotions & discounts
 │   │       │   ├── sync.repo.ts          # Offline sync queue & devices
+│   │       │   ├── alert.repo.ts         # System alerts
 │   │       │   ├── purchase.repo.ts      # Stock-in recordings
 │   │       │   ├── supplier.repo.ts      # Supplier data
 │   │       │   ├── tenant.repo.ts        # Global tenant profiles
@@ -327,6 +329,12 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 | GET | `/api/v1/sync/status` | Get sync queue health |
 | GET | `/api/v1/sync/queue` | List sync queue (Admin only) |
 | GET | `/api/v1/sync/devices` | List registered devices |
+
+### 🔔 Alerts & Notifications (Sprint 12)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/alerts` | List system alerts (filter by read status) |
+| PATCH | `/api/v1/alerts/:id/read` | Mark alert as read |
 
 
 ---
