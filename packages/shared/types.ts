@@ -397,6 +397,22 @@ export interface Alert {
   created_at: string;
 }
 
+// ─── Analytics (Sprint 13) ───
+
+export interface DailyMetric {
+  id: string;
+  tenant_id: string;
+  branch_id: string | null;
+  date: string;
+  total_sales: number;
+  total_purchases: number;
+  total_expenses: number;
+  total_profit: number;
+  invoices_count: number;
+  new_customers_count: number;
+  created_at: string;
+}
+
 // ─── API Response Contracts ───
 
 export interface ApiResponse<T> {

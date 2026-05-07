@@ -64,6 +64,7 @@ dhanlekha/
 │   │       │   ├── offers/         # (Sprint 10) Discount & Promotion engine
 │   │       │   ├── sync/           # (Sprint 11) Offline Sync Engine
 │   │       │   ├── alerts/         # (Sprint 12) System Alerts & Notifications
+│   │       │   ├── analytics/      # (Sprint 13) Business Intelligence & Reporting
 │   │       │   ├── tenants/        # SaaS Tenant management
 │   │       │   └── health/         # System status
 │   │       ├── repositories/
@@ -78,6 +79,7 @@ dhanlekha/
 │   │       │   ├── offer.repo.ts         # Promotions & discounts
 │   │       │   ├── sync.repo.ts          # Offline sync queue & devices
 │   │       │   ├── alert.repo.ts         # System alerts
+│   │       │   ├── analytics.repo.ts     # Pre-aggregated metrics
 │   │       │   ├── purchase.repo.ts      # Stock-in recordings
 │   │       │   ├── supplier.repo.ts      # Supplier data
 │   │       │   ├── tenant.repo.ts        # Global tenant profiles
@@ -335,6 +337,13 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 |--------|----------|-------------|
 | GET | `/api/v1/alerts` | List system alerts (filter by read status) |
 | PATCH | `/api/v1/alerts/:id/read` | Mark alert as read |
+
+### 📊 Analytics & Reporting (Sprint 13)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/dashboard` | Aggregated high-level metrics |
+| GET | `/api/v1/analytics/daily` | Time-series daily snapshots |
+| GET | `/api/v1/analytics/profit` | P&L calculation for date range |
 
 
 ---

@@ -4,7 +4,7 @@
 
 ---
 
-## Current Sprint: Sprint 12 — Alerts & Notifications
+## Current Sprint: Sprint 13 — Analytics & Reporting
 **Status:** ✅ Complete
 **Started:** 2026-05-07
 **Completed:** 2026-05-07
@@ -228,7 +228,14 @@
 | 3 | Read/List API endpoints | ✅ Done | With `is_read` filters |
 
 ### Sprint 13: Analytics & Reporting
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Build business intelligence APIs.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | `daily_metrics` schema | ✅ Done | Pre-aggregated stats |
+| 2 | Metrics aggregator job | ✅ Done | Aggregate daily |
+| 3 | Analytics APIs | ✅ Done | Daily, Dashboard, Profit |
 
 ### Sprint 14: AI Integration
 **Status:** ⬜ Not Started
@@ -259,6 +266,6 @@
 |-------|---------|--------|
 | Phase 1: Foundation | 0–2 | ✅ Complete |
 | Phase 2: Core ERP | 3–10 | ✅ Complete |
-| Phase 3: System Features | 11–14 | 🔄 In Progress (2 ⬜) |
+| Phase 3: System Features | 11–14 | 🔄 In Progress (1 ⬜) |
 | Phase 4: Performance & Production | 15–16 | ⬜ Not Started |
 | Phase 5: Frontend | 17–20 | ⬜ Not Started |
