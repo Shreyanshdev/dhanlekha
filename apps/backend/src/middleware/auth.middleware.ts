@@ -18,6 +18,7 @@ declare global {
   }
 }
 
+// Authentication: Verifies the JWT token and identifies the user
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
 
@@ -34,4 +35,19 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   } catch (error) {
     throw new AuthenticationError('Invalid or expired token');
   }
+}
+
+// Authorization: Checks if the authenticated user has the required permissions
+export function requireRole(roles: string[]) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user) {
+      throw new AuthenticationError('Authentication required');
+    }
+
+    if (!roles.includes(req.user.role)) {
+      throw new AuthenticationError(`Access denied: requires one of the roles [${roles.join(', ')}]`);
+    }
+
+    next();
+  };
 }

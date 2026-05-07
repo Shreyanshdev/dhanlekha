@@ -23,6 +23,7 @@ import expensesRoutes from './modules/expenses/expenses.routes';
 import offersRoutes from './modules/offers/offers.routes';
 import syncRoutes from './modules/sync/sync.routes';
 import alertsRoutes from './modules/alerts/alerts.routes';
+import analyticsRoutes from './modules/analytics/analytics.routes';
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use('/api/v1/expenses', expensesRoutes);
 app.use('/api/v1/offers', offersRoutes);
 app.use('/api/v1/sync', syncRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
 
 // ── 404 Handler ──
 app.use((_req, res) => {
