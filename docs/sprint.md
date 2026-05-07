@@ -509,28 +509,47 @@ await api.delete(`/customers/${id}`);
 
 ---
 
-### Sprint 14: AI Integration (Backend)
+### Sprint 14: AI Integration (Backend + Python Service)
 
-**Objective:** Connect AI service to the ERP backend.
+**Objective:** Build the AI microservice and integrate it with the ERP backend.
 
-**Scope — Backend APIs:**
-- `POST /api/v1/ai/parse-product` — AI-based product parsing
-- `GET /api/v1/ai/suggestions/:productId` — smart product suggestions
-- `GET /api/v1/ai/demand/:productId` — demand prediction
+**Scope — Backend APIs (Node.js):**
+- `POST /api/v1/ai/parse-product` — AI-based product name parsing (Growth+)
+- `POST /api/v1/ai/parse-voice` — Voice billing transcript → invoice items (Enterprise)
+- `POST /api/v1/ai/suggest-products` — Smart product suggestions during billing (Growth+)
+- `GET /api/v1/ai/demand/:productId` — Demand prediction with trend analysis (Enterprise)
+- `POST /api/v1/ai/enrich-product` — Background AI product enrichment (Growth+)
+- `GET /api/v1/ai/suggestions/:productId` — Get cached AI data for a product
+
+**Python AI Service (FastAPI):**
+- `POST /ai/parse-product` — NLP-based product name normalization, category prediction, tag generation
+- `POST /ai/parse-voice` — Hindi/English voice transcript parsing with catalog matching
+- `POST /ai/suggest-products` — Fuzzy matching + trigram similarity for suggestions
+- `GET /ai/predict-demand/:pid` — Weighted moving average + trend detection
+- `POST /ai/enrich-product` — Background metadata generation for existing products
+- `GET /ai/health` — Service health check
 
 **Database Tables:**
-- `product_ai_data` — AI-enriched metadata (normalized_name, tags, predictions)
+- `product_ai_data` — AI-enriched metadata (normalized_name, tags, predictions, confidence_score)
 
-**Key Logic:**
-- Backend calls Python FastAPI service via **Axios**:
-  ```javascript
-  const aiResponse = await aiClient.post('/parse', { text: rawProductText });
-  ```
-- AI is optional and non-blocking — core system works without it
-- AI responses cached in `product_ai_data`
-- Confidence scores tracked for quality monitoring
+**Granular Feature Flags (Plan Gating):**
 
-**Outcome:** AI-assisted ERP with smart product management.
+| Feature Flag | Type | Starter | Growth | Enterprise |
+|-------------|------|---------|--------|------------|
+| `ai_product_entry` | toggle | ❌ OFF | ✅ ON | ✅ ON |
+| `ai_smart_suggestions` | toggle | ❌ OFF | ✅ ON | ✅ ON |
+| `ai_voice_billing` | toggle | ❌ OFF | ❌ OFF | ✅ ON |
+| `ai_demand_prediction` | toggle | ❌ OFF | ❌ OFF | ✅ ON |
+
+**Key Design Decisions:**
+- **AI is optional and non-blocking** — core system works without it
+- Backend uses **Circuit Breaker** pattern (3 failures → 60s cooldown → fallback)
+- AI responses cached in `product_ai_data` for offline use
+- Confidence scores tracked (0.000–1.000) for quality monitoring
+- Backend calls Python service via Axios with configurable timeout (`AI_SERVICE_URL`)
+- **Monorepo integration**: `npm run dev` starts both backend and AI service via Turborepo
+
+**Outcome:** Full AI-powered ERP with product parsing, voice billing, smart search, and demand forecasting.
 
 ---
 

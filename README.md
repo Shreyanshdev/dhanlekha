@@ -65,6 +65,7 @@ dhanlekha/
 │   │       │   ├── sync/           # (Sprint 11) Offline Sync Engine
 │   │       │   ├── alerts/         # (Sprint 12) System Alerts & Notifications
 │   │       │   ├── analytics/      # (Sprint 13) Business Intelligence & Reporting
+│   │       │   ├── ai/             # (Sprint 14) AI Integration (parse, voice, suggest, demand, enrich)
 │   │       │   ├── tenants/        # SaaS Tenant management
 │   │       │   └── health/         # System status
 │   │       ├── repositories/
@@ -80,6 +81,7 @@ dhanlekha/
 │   │       │   ├── sync.repo.ts          # Offline sync queue & devices
 │   │       │   ├── alert.repo.ts         # System alerts
 │   │       │   ├── analytics.repo.ts     # Pre-aggregated metrics
+│   │       │   ├── productAiData.repo.ts # AI-enriched product metadata
 │   │       │   ├── purchase.repo.ts      # Stock-in recordings
 │   │       │   ├── supplier.repo.ts      # Supplier data
 │   │       │   ├── tenant.repo.ts        # Global tenant profiles
@@ -93,8 +95,19 @@ dhanlekha/
 │   │           └── response.ts           # Standard API response helpers
 │   ├── frontend/                   # Next.js + Electron (Sprint 17+)
 │   │   └── package.json
-│   └── ai-service/                 # Python FastAPI (Sprint 14+)
-│       └── README.md
+│   └── ai-service/                 # Python FastAPI (Sprint 14)
+│       ├── package.json            # Monorepo workspace config (npm run dev:ai)
+│       ├── main.py                 # FastAPI app entry
+│       ├── requirements.txt        # Python dependencies
+│       ├── README.md               # Full API documentation
+│       ├── routers/                # API endpoints
+│       │   ├── product.py          # Product parsing + enrichment
+│       │   ├── voice.py            # Voice billing parser (Hindi/English)
+│       │   ├── suggestions.py      # Smart product suggestions (trigram)
+│       │   ├── demand.py           # Demand prediction (WMA + trend)
+│       │   └── health.py           # Health check
+│       └── models/
+│           └── schemas.py          # Pydantic request/response models
 ├── packages/
 │   └── shared/                     # Monorepo shared package
 │       ├── api.ts                  # Shared Axios client logic
@@ -344,6 +357,16 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 | GET | `/api/v1/analytics/dashboard` | Aggregated high-level metrics |
 | GET | `/api/v1/analytics/daily` | Time-series daily snapshots |
 | GET | `/api/v1/analytics/profit` | P&L calculation for date range |
+
+### 🤖 AI Integration (Sprint 14)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/ai/parse-product` | AI product name parsing (Growth+) |
+| POST | `/api/v1/ai/parse-voice` | Voice billing transcript parser (Enterprise) |
+| POST | `/api/v1/ai/suggest-products` | Smart product suggestions (Growth+) |
+| GET | `/api/v1/ai/demand/:productId` | Demand prediction (Enterprise) |
+| POST | `/api/v1/ai/enrich-product` | Background AI product enrichment (Growth+) |
+| GET | `/api/v1/ai/suggestions/:productId` | Get cached AI data for product |
 
 
 ---

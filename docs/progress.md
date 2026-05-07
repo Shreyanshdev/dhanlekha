@@ -4,7 +4,7 @@
 
 ---
 
-## Current Sprint: Sprint 13 — Analytics & Reporting
+## Current Sprint: Sprint 14 — AI Integration
 **Status:** ✅ Complete
 **Started:** 2026-05-07
 **Completed:** 2026-05-07
@@ -238,7 +238,16 @@
 | 3 | Analytics APIs | ✅ Done | Daily, Dashboard, Profit |
 
 ### Sprint 14: AI Integration
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Connect Python AI service to ERP backend.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | `product_ai_data` schema | ✅ Done | AI metadata cache |
+| 2 | Python FastAPI service | ✅ Done | Product parser, voice, suggestions, demand |
+| 3 | AI client + circuit breaker | ✅ Done | Graceful degradation |
+| 4 | Granular plan gating | ✅ Done | 4 separate AI feature flags |
+| 5 | 5 backend AI endpoints | ✅ Done | parse, voice, suggest, demand, enrich |
 
 ### Sprint 15: Performance Optimisation
 **Status:** ⬜ Not Started
@@ -266,6 +275,6 @@
 |-------|---------|--------|
 | Phase 1: Foundation | 0–2 | ✅ Complete |
 | Phase 2: Core ERP | 3–10 | ✅ Complete |
-| Phase 3: System Features | 11–14 | 🔄 In Progress (1 ⬜) |
+| Phase 3: System Features | 11–14 | ✅ Complete |
 | Phase 4: Performance & Production | 15–16 | ⬜ Not Started |
 | Phase 5: Frontend | 17–20 | ⬜ Not Started |
