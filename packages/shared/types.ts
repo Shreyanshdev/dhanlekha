@@ -383,6 +383,20 @@ export interface SyncDevice {
   created_at: string;
 }
 
+// ─── Alerts (Sprint 12) ───
+
+export type AlertType = 'low_stock' | 'payment_due' | 'high_demand' | 'expiry_soon' | 'sync_failed';
+
+export interface Alert {
+  id: string;
+  tenant_id: string;
+  branch_id: string | null;
+  alert_type: AlertType;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
 // ─── API Response Contracts ───
 
 export interface ApiResponse<T> {

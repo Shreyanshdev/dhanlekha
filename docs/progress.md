@@ -4,10 +4,10 @@
 
 ---
 
-## Current Sprint: Sprint 11 — Offline Sync Engine
+## Current Sprint: Sprint 12 — Alerts & Notifications
 **Status:** ✅ Complete
-**Started:** 2026-05-06
-**Completed:** 2026-05-06
+**Started:** 2026-05-07
+**Completed:** 2026-05-07
 
 ---
 
@@ -218,7 +218,14 @@
 | 4 | Status & Retry mechanisms | ✅ Done | Resilient sync |
 
 ### Sprint 12: Alerts & Notifications
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Build proactive alerting system for stock, payments, and sync issues.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Alerts database schema | ✅ Done | `alerts` table |
+| 2 | Alert generator job | ✅ Done | Low stock, payment due, sync fail |
+| 3 | Read/List API endpoints | ✅ Done | With `is_read` filters |
 
 ### Sprint 13: Analytics & Reporting
 **Status:** ⬜ Not Started
@@ -252,6 +259,6 @@
 |-------|---------|--------|
 | Phase 1: Foundation | 0–2 | ✅ Complete |
 | Phase 2: Core ERP | 3–10 | ✅ Complete |
-| Phase 3: System Features | 11–14 | 🔄 In Progress (3 ⬜) |
+| Phase 3: System Features | 11–14 | 🔄 In Progress (2 ⬜) |
 | Phase 4: Performance & Production | 15–16 | ⬜ Not Started |
 | Phase 5: Frontend | 17–20 | ⬜ Not Started |
