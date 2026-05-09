@@ -1,23 +1,29 @@
 /**
- * Request logging middleware.
- * Logs method, URL, status code, and response time for every request.
+ * Request logging middleware — structured JSON logs via Pino.
+ * Logs method, URL, status code, response time, and IP for every request.
  */
 import type { Request, Response, NextFunction } from 'express';
+import logger from '../config/logger';
 
-function requestLogger(req: Request, res: Response, next: NextFunction) {
+function requestLogger(req: Request, res: Response, next: NextFunction): void {
   const start = Date.now();
 
-  // Log on response finish
   res.on('finish', () => {
     const duration = Date.now() - start;
-    const logLine = `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} → ${res.statusCode} (${duration}ms)`;
+    const logData = {
+      method: req.method,
+      url: req.originalUrl,
+      status: res.statusCode,
+      duration,
+      ip: req.ip,
+    };
 
     if (res.statusCode >= 500) {
-      console.error(logLine);
+      logger.error(logData, `${req.method} ${req.originalUrl} → ${res.statusCode}`);
     } else if (res.statusCode >= 400) {
-      console.warn(logLine);
+      logger.warn(logData, `${req.method} ${req.originalUrl} → ${res.statusCode}`);
     } else {
-      console.log(logLine);
+      logger.info(logData, `${req.method} ${req.originalUrl} → ${res.statusCode}`);
     }
   });
 

@@ -5,6 +5,8 @@ import helmet from 'helmet';
 // Middleware
 import requestLogger from './middleware/requestLogger.middleware';
 import errorHandler from './middleware/errorHandler.middleware';
+import { globalLimiter, authLimiter, heavyLimiter } from './middleware/rateLimit.middleware';
+import { sanitiseInput } from './middleware/sanitise.middleware';
 
 // Routes
 import healthRoutes from './modules/health/health.routes';
@@ -28,30 +30,42 @@ import aiRoutes from './modules/ai/ai.routes';
 
 const app = express();
 
-// ── Security ──
-app.use(helmet());
-app.use(cors());
+// ── Security Hardening ──
+app.use(helmet());               // Security headers (CSP, HSTS, X-Frame-Options, etc.)
+app.use(cors());                  // Cross-Origin Resource Sharing
+app.use(globalLimiter);           // 200 req/min per IP — global abuse prevention
 
 // ── Body Parsing ──
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// ── Input Sanitisation (after body parsing, before routes) ──
+app.use(sanitiseInput);
+
 // ── Request Logging ──
 app.use(requestLogger);
 
 // ── API Routes ──
+// Health (no rate limiting — used by load balancers)
 app.use('/api/v1/health', healthRoutes);
-app.use('/api/v1/auth', authRoutes);
+
+// Auth routes — strict rate limiting to prevent brute-force
+app.use('/api/v1/auth', authLimiter, authRoutes);
+
+// Standard routes
 app.use('/api/v1/tenants', tenantsRoutes);
 app.use('/api/v1/users', usersRoutes);
 app.use('/api/v1/products', productsRoutes);
 app.use('/api/v1/branches', branchesRoutes);
 app.use('/api/v1/customers', customersRoutes);
 app.use('/api/v1/suppliers', suppliersRoutes);
-app.use('/api/v1/invoices', invoicesRoutes);
-app.use('/api/v1/payments', paymentsRoutes);
+
+// Heavy write operations — stricter rate limiting
+app.use('/api/v1/invoices', heavyLimiter, invoicesRoutes);
+app.use('/api/v1/payments', heavyLimiter, paymentsRoutes);
+app.use('/api/v1/purchases', heavyLimiter, purchasesRoutes);
+
 app.use('/api/v1', ledgerRoutes);
-app.use('/api/v1/purchases', purchasesRoutes);
 app.use('/api/v1/expenses', expensesRoutes);
 app.use('/api/v1/offers', offersRoutes);
 app.use('/api/v1/sync', syncRoutes);

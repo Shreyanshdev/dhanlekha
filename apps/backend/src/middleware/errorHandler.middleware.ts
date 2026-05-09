@@ -1,46 +1,45 @@
-import { AppError } from '../utils/errors';
+import type { Request, Response, NextFunction } from 'express';
+import logger from '../config/logger';
 
 /**
  * Global error handler middleware.
  * Catches all errors thrown in controllers/services and returns
  * a standardised JSON response. Internal details are never exposed.
  */
-import type { Request, Response, NextFunction } from 'express';
+function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction): void {
+  // Extract properties safely from unknown error
+  const error = err as Record<string, unknown>;
+  const statusCode = (typeof error.statusCode === 'number' ? error.statusCode : 500) as number;
+  const code = (typeof error.code === 'string' ? error.code : 'INTERNAL_ERROR') as string;
+  const message = error.message as string || 'Internal server error';
 
-function errorHandler(err: any, req: Request, res: Response, _next: NextFunction) {
-  // Default to 500 if not a known AppError
-  const statusCode = err.statusCode || 500;
-  const code = err.code || 'INTERNAL_ERROR';
-
-  // Build response
-  const response: any = {
+  // Build response — never expose stack traces or internal details
+  const response: Record<string, unknown> = {
     success: false,
     error: {
       code,
-      message: statusCode === 500 ? 'Internal server error' : err.message,
+      message: statusCode === 500 ? 'Internal server error' : message,
     },
   };
 
   // Include field info for validation errors
-  if ((err as any).field) {
-    response.error.field = (err as any).field;
+  if (typeof error.field === 'string') {
+    (response.error as Record<string, unknown>).field = error.field;
   }
 
-  // Log full error for 500s (never expose to client)
+  // Structured logging — 500s get full context, others get a one-liner
   if (statusCode === 500) {
-    console.error('[ERROR]', {
-      message: err.message,
-      stack: err.stack,
+    logger.error({
+      err: error,
       url: req.originalUrl,
       method: req.method,
-      timestamp: new Date().toISOString(),
-    });
+      ip: req.ip,
+    }, `Unhandled error: ${message}`);
   } else {
-    // Log non-500 errors at info level
-    console.warn(`[${statusCode}] ${req.method} ${req.originalUrl} — ${err.message}`);
+    logger.warn({ status: statusCode, url: req.originalUrl }, `${code}: ${message}`);
   }
 
-  return res.status(statusCode).json(response);
+  res.status(statusCode).json(response);
 }
 
 export default errorHandler;

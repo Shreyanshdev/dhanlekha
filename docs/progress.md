@@ -4,7 +4,7 @@
 
 ---
 
-## Current Sprint: Sprint 15 — Performance Optimisation
+## Current Sprint: Sprint 16 — Production Readiness
 **Status:** ✅ Complete
 **Started:** 2026-05-09
 **Completed:** 2026-05-09
@@ -263,7 +263,19 @@
 | 6 | Performance benchmarks | ✅ Done | All SRS targets passed |
 
 ### Sprint 16: Production Readiness
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Harden backend for production deployment.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Structured logging (Pino) | ✅ Done | JSON in prod, pretty-print in dev, sensitive field redaction |
+| 2 | Request/Error logger upgrade | ✅ Done | Structured fields: method, url, status, duration, IP |
+| 3 | Health + Readiness probes | ✅ Done | /health (liveness + memory), /health/ready (readiness) |
+| 4 | Rate limiting (3-tier) | ✅ Done | Global 200/min, Auth 10/min, Heavy 30/min |
+| 5 | Input sanitisation | ✅ Done | XSS, prototype pollution, NoSQL injection |
+| 6 | Helmet.js hardening | ✅ Done | CSP, HSTS, X-Content-Type, X-Powered-By removed |
+| 7 | Docker production config | ✅ Done | Multi-stage build, non-root user, HEALTHCHECK |
+| 8 | E2E test suite | ✅ Done | 3 workflows + security validation |
 
 ### Sprint 17: Frontend Setup & Axios Integration
 **Status:** ⬜ Not Started
@@ -286,5 +298,5 @@
 | Phase 1: Foundation | 0–2 | ✅ Complete |
 | Phase 2: Core ERP | 3–10 | ✅ Complete |
 | Phase 3: System Features | 11–14 | ✅ Complete |
-| Phase 4: Performance & Production | 15–16 | 🔄 In Progress (1 ⬜) |
+| Phase 4: Performance & Production | 15–16 | ✅ Complete |
 | Phase 5: Frontend | 17–20 | ⬜ Not Started |
