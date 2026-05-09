@@ -1,4 +1,5 @@
 import { AnalyticsRepository } from '../../repositories/analytics.repo';
+import { cacheService, cacheKeys } from '../../services/cache.service';
 import db from '../../config/database';
 import type { DailyMetric } from '@dhanlekha/shared';
 import type { GetDailyAnalyticsInput, GetDashboardInput } from './analytics.validator';
@@ -15,8 +16,12 @@ export async function getDashboardData(
   tenantId: string,
   input: GetDashboardInput
 ): Promise<any> {
-  const repo = new AnalyticsRepository(tenantId);
-  return await repo.getDashboardSummary(input.branch_id);
+  const key = cacheKeys.dashboard(tenantId, input.branch_id);
+
+  return await cacheService.getOrSet(key, async () => {
+    const repo = new AnalyticsRepository(tenantId);
+    return await repo.getDashboardSummary(input.branch_id);
+  }, 300); // 5 min TTL — dashboard data is pre-aggregated
 }
 
 export async function getProfitData(

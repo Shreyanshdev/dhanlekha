@@ -42,3 +42,14 @@ github_guide.md
 
 # API Testing
 api-testing/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/

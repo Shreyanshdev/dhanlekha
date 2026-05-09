@@ -2,6 +2,7 @@ import app from './app';
 import env from './config/env';
 import db from './config/database';
 import { connectRedis, getRedisClient } from './config/redis';
+import { initJobScheduler, shutdownJobScheduler } from './jobs/scheduler';
 
 async function start() {
   console.log('─────────────────────────────────────────');
@@ -28,6 +29,9 @@ async function start() {
     console.log('─────────────────────────────────────────');
   });
 
+  // ── Initialize Background Jobs (requires Redis) ──
+  await initJobScheduler();
+
   // ── Graceful Shutdown ──
   const shutdown = async (signal: string) => {
     console.log(`\n[Server] Received ${signal}. Starting graceful shutdown...`);
@@ -37,6 +41,7 @@ async function start() {
     });
 
     try {
+      await shutdownJobScheduler();
       const redisClient = getRedisClient();
       if (redisClient && redisClient.isOpen) {
         await redisClient.quit();

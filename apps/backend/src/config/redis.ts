@@ -1,9 +1,10 @@
-import { createClient } from 'redis';
+import { createClient, RedisClientType } from 'redis';
 import env from './env';
 
-let redisClient = null;
+// Explicit type so downstream consumers get proper method types
+let redisClient: RedisClientType | null = null;
 
-async function connectRedis() {
+async function connectRedis(): Promise<RedisClientType | null> {
   try {
     redisClient = createClient({
       socket: {
@@ -36,7 +37,7 @@ async function connectRedis() {
   }
 }
 
-function getRedisClient() {
+function getRedisClient(): RedisClientType | null {
   return redisClient;
 }
 
