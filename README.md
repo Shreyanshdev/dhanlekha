@@ -88,8 +88,14 @@ dhanlekha/
 │   │       │   └── user.repo.ts          # Staff accounts
 │   │       ├── database/
 │   │       │   ├── transaction.ts        # Atomic transaction helper
-│   │       │   ├── migrations/           # Knex migrations (Sprints 1-10)
+│   │       │   ├── migrations/           # Knex migrations (Sprints 1-15)
 │   │       │   └── seeds/                # Seed data (plans, default admins)
+│   │       ├── services/
+│   │       │   └── cache.service.ts     # (Sprint 15) Redis cache with getOrSet pattern
+│   │       ├── jobs/
+│   │       │   ├── scheduler.ts         # (Sprint 15) BullMQ recurring job manager
+│   │       │   ├── metrics.job.ts       # Daily metrics aggregation
+│   │       │   └── alerts.job.ts        # Alert generation (low stock, due payments)
 │   │       └── utils/
 │   │           ├── errors.ts             # Custom HTTP error classes
 │   │           └── response.ts           # Standard API response helpers

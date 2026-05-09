@@ -4,10 +4,10 @@
 
 ---
 
-## Current Sprint: Sprint 14 — AI Integration
+## Current Sprint: Sprint 15 — Performance Optimisation
 **Status:** ✅ Complete
-**Started:** 2026-05-07
-**Completed:** 2026-05-07
+**Started:** 2026-05-09
+**Completed:** 2026-05-09
 
 ---
 
@@ -250,7 +250,17 @@
 | 5 | 5 backend AI endpoints | ✅ Done | parse, voice, suggest, demand, enrich |
 
 ### Sprint 15: Performance Optimisation
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
+**Goal:** Ensure backend meets all SRS performance targets.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | 30+ missing indexes | ✅ Done | All db.md Section 13 indexes applied |
+| 2 | Redis caching layer | ✅ Done | getOrSet pattern, key builders, pattern invalidation |
+| 3 | Barcode lookup cache | ✅ Done | Sub-1ms with Redis, sub-2ms without |
+| 4 | Dashboard cache | ✅ Done | 5min TTL on pre-aggregated data |
+| 5 | BullMQ job scheduler | ✅ Done | metrics (daily), alerts (15min), usage reset (monthly) |
+| 6 | Performance benchmarks | ✅ Done | All SRS targets passed |
 
 ### Sprint 16: Production Readiness
 **Status:** ⬜ Not Started
@@ -276,5 +286,5 @@
 | Phase 1: Foundation | 0–2 | ✅ Complete |
 | Phase 2: Core ERP | 3–10 | ✅ Complete |
 | Phase 3: System Features | 11–14 | ✅ Complete |
-| Phase 4: Performance & Production | 15–16 | ⬜ Not Started |
+| Phase 4: Performance & Production | 15–16 | 🔄 In Progress (1 ⬜) |
 | Phase 5: Frontend | 17–20 | ⬜ Not Started |
