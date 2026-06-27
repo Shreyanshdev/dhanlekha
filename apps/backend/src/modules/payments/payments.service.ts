@@ -4,6 +4,8 @@ import { InvoiceRepository } from '../../repositories/invoice.repo';
 import { CustomerRepository } from '../../repositories/customer.repo';
 import { withTransaction } from '../../database/transaction';
 import { NotFoundError, BadRequestError } from '../../utils/errors';
+import { postJournal } from '../../accounting/ledger.service';
+import { settlementAccountForMode, ACCOUNTS } from '../../accounting/coa';
 import type { Payment, PaymentAllocation } from '@dhanlekha/shared';
 import type { CreatePaymentInput, AllocatePaymentInput } from './payments.validator';
 
@@ -183,6 +185,23 @@ export async function createPayment(
 
       // Reduce outstanding balance
       await customerRepo.updateBalance(data.customer_id, -totalAllocated);
+    }
+
+    // Post the GL entry: Dr Cash/Bank, Cr Accounts Receivable (Sprint 18).
+    if (data.amount > 0) {
+      await postJournal(trx, {
+        tenantId,
+        branchId,
+        entryDate: paymentDate,
+        narration: `Payment received${data.reference_number ? ` (${data.reference_number})` : ''}`,
+        referenceType: 'payment',
+        referenceId: paymentId,
+        createdBy: userId,
+        lines: [
+          { account_code: settlementAccountForMode(data.payment_mode), debit: data.amount },
+          { account_code: ACCOUNTS.ACCOUNTS_RECEIVABLE, credit: data.amount },
+        ],
+      });
     }
 
     const payment = (await paymentRepo.findById(paymentId))!;
