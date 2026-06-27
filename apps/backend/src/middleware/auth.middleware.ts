@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import env from '../config/env';
-import { AuthenticationError } from '../utils/errors';
+import { AuthenticationError, ForbiddenError } from '../utils/errors';
 
 export interface JwtPayload {
   userId: string;
@@ -44,8 +44,10 @@ export function requireRole(roles: string[]) {
       throw new AuthenticationError('Authentication required');
     }
 
+    // Authenticated but lacking the required role → 403 Forbidden (not 401),
+    // matching the sibling `authorize` middleware and the documented contract.
     if (!roles.includes(req.user.role)) {
-      throw new AuthenticationError(`Access denied: requires one of the roles [${roles.join(', ')}]`);
+      throw new ForbiddenError(`Access denied: requires one of the roles [${roles.join(', ')}]`);
     }
 
     next();

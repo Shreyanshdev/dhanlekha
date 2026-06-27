@@ -343,3 +343,75 @@ they already store paise-valued numbers, so no value changes.
 - **Ledger snapshot job:** the previously orphaned `generateSnapshot()` is now driven by a daily
   (00:15) BullMQ job (`jobs/snapshots.job.ts`) that walks every tenant's customers.
 
+---
+
+## 🧾 Double-Entry General Ledger (Sprint 18)
+
+Sprint 18 adds a real double-entry accounting core. Every money event now produces a
+**balanced journal entry** (`SUM(debit) == SUM(credit)`), giving the system an auditable
+financial backbone for the Trial Balance, P&L, and Balance Sheet coming in Sprint 20.
+
+### Data model
+
+- **`chart_of_accounts`** — hierarchical accounts (`account_code`, `name`, `account_type` of
+  `asset|liability|income|expense|equity`, optional `parent_id`, `is_system`/`is_active`).
+- **`journal_entries`** — header: `entry_date`, `narration`, `reference_type`/`reference_id`
+  (links back to the invoice/payment/etc.), and `status` (`posted`/`void`).
+- **`journal_lines`** — one row per debit or credit (`account_id`, `debit`, `credit` in paise;
+  exactly one side is non-zero).
+
+### Chart of Accounts
+
+`src/accounting/coa.ts` defines stable account codes (`ACCOUNTS`) and the
+`DEFAULT_CHART_OF_ACCOUNTS`. On tenant registration, `ensureChartOfAccounts` seeds the default
+tree **idempotently**, so existing tenants are safe to re-run.
+
+### `postJournal` service
+
+`src/accounting/ledger.service.ts` is the single entry point for writing to the GL. It:
+
+- resolves account **codes → ids** for the tenant (`resolveCodes`),
+- validates each line has exactly one of debit/credit and the totals balance (non-zero), and
+- writes the entry + lines inside the **caller's transaction**, so postings commit atomically
+  with the business event that triggered them.
+
+### Postings wired into money events
+
+| Event | Debit | Credit |
+| --- | --- | --- |
+| Invoice | Cash/AR + Discounts | Sales + GST Output Payable |
+| Payment | Cash/Bank | Accounts Receivable |
+| Expense | General Expense | Cash/Bank |
+| Purchase | Purchases + GST Input Credit | Accounts Payable / Cash |
+
+### Ledger APIs
+
+- **`GET /api/v1/accounts`** — chart of accounts as a tree.
+- **`POST /api/v1/accounts`** (admin) — create a custom account.
+- **`GET /api/v1/accounts/:id/ledger`** — account ledger with totals and a running balance.
+- **`GET /api/v1/journals`** — list journal entries with their lines.
+- **`POST /api/v1/journals`** (admin) — post a manual entry; the balance rule is enforced.
+
+All endpoints are documented in the OpenAPI spec (`/api/docs`).
+
+---
+
+## ✅ Automated Tests
+
+The backend now ships with a **Vitest + Supertest** suite (introduced alongside Sprint 17/18).
+
+```bash
+npm test            # run once (serial)
+npm run test:watch  # watch mode
+```
+
+- **Isolated test DB:** `test/globalSetup.ts` builds a clean SQLite database
+  (`data/test.sqlite`), runs all migrations + seeds once, and the suite runs **serially**
+  (single fork, WAL, `busy_timeout`) to avoid SQLite lock contention.
+- **Helpers:** `test/helpers.ts` provides `registerAndLogin`, `createProduct`,
+  `createPercentageOffer`, and token/utility helpers.
+- **Coverage (46 tests):** money math (`money.test.ts`), invoice money + offer auto-apply
+  (`invoices.test.ts`), monthly quota enforcement (`quota.test.ts`), settings gating
+  (`settings.test.ts`), subscriptions + change-plan (`subscriptions.test.ts`), audit-log writes
+  and secret redaction (`audit.test.ts`), and the full General Ledger (`ledger.test.ts`).
+

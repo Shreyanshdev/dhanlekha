@@ -21,6 +21,10 @@ const standardHandler = (_req: Request, res: Response): void => {
   });
 };
 
+// Disable rate limiting under the automated test runner so suites that issue
+// many requests from a single loopback IP are not throttled.
+const skipInTest = () => process.env.NODE_ENV === 'test';
+
 /** Global rate limiter — applied to all routes */
 export const globalLimiter = rateLimit({
   windowMs: 60 * 1000,  // 1 minute window
@@ -28,6 +32,7 @@ export const globalLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false,  // Disable `X-RateLimit-*` headers
   handler: standardHandler,
+  skip: skipInTest,
 });
 
 /** Auth rate limiter — stricter for login/register to prevent brute-force */
@@ -38,6 +43,7 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
   handler: standardHandler,
   skipSuccessfulRequests: true, // Only count failed attempts
+  skip: skipInTest,
 });
 
 /** Heavy operation limiter — invoices, purchases, bulk writes */
@@ -47,4 +53,5 @@ export const heavyLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: standardHandler,
+  skip: skipInTest,
 });

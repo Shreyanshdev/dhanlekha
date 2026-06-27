@@ -669,6 +669,104 @@ const schemas: any = {
     required: ['plan_id'],
     properties: { plan_id: { type: 'string', example: 'growth' } },
   },
+
+  // ─── General Ledger (Sprint 18) ───
+  Account: {
+    type: 'object',
+    properties: {
+      id: uuid(),
+      tenant_id: uuid(),
+      account_code: { type: 'string', example: '4000' },
+      name: { type: 'string', example: 'Sales' },
+      account_type: { type: 'string', enum: ['asset', 'liability', 'income', 'expense', 'equity'] },
+      parent_id: { ...uuid(), nullable: true },
+      is_system: { type: 'boolean' },
+      is_active: { type: 'boolean' },
+      children: { type: 'array', items: ref('Account'), description: 'Nested child accounts (tree response)' },
+      created_at: ts(),
+      updated_at: ts(),
+    },
+  },
+  CreateAccountRequest: {
+    type: 'object',
+    required: ['account_code', 'name', 'account_type'],
+    properties: {
+      account_code: { type: 'string', example: '6100' },
+      name: { type: 'string', example: 'Rent' },
+      account_type: { type: 'string', enum: ['asset', 'liability', 'income', 'expense', 'equity'] },
+      parent_id: { ...uuid(), nullable: true },
+    },
+  },
+  JournalLine: {
+    type: 'object',
+    properties: {
+      id: uuid(),
+      journal_entry_id: uuid(),
+      account_id: uuid(),
+      debit: money('Debit amount in paise'),
+      credit: money('Credit amount in paise'),
+    },
+  },
+  JournalEntry: {
+    type: 'object',
+    properties: {
+      id: uuid(),
+      tenant_id: uuid(),
+      branch_id: { ...uuid(), nullable: true },
+      entry_date: dateStr(),
+      narration: nullableStr(),
+      reference_type: { type: 'string', example: 'invoice' },
+      reference_id: { ...uuid(), nullable: true },
+      status: { type: 'string', enum: ['posted', 'void'] },
+      lines: { type: 'array', items: ref('JournalLine') },
+      created_at: ts(),
+    },
+  },
+  CreateJournalRequest: {
+    type: 'object',
+    required: ['lines'],
+    description: 'Manual journal. SUM(debit) must equal SUM(credit) and be non-zero; each line has exactly one of debit/credit.',
+    properties: {
+      entry_date: dateStr(),
+      narration: { type: 'string' },
+      reference_type: { type: 'string', default: 'manual' },
+      reference_id: { ...uuid(), nullable: true },
+      lines: {
+        type: 'array',
+        minItems: 2,
+        items: {
+          type: 'object',
+          required: ['account_id'],
+          properties: { account_id: uuid(), debit: money(), credit: money() },
+        },
+      },
+    },
+  },
+  AccountLedger: {
+    type: 'object',
+    properties: {
+      account: ref('Account'),
+      total_debit: money(),
+      total_credit: money(),
+      closing_balance: money('Running balance in paise (signed per account normal balance)'),
+      entries: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            journal_entry_id: uuid(),
+            entry_date: dateStr(),
+            narration: nullableStr(),
+            reference_type: { type: 'string' },
+            reference_id: { ...uuid(), nullable: true },
+            debit: money(),
+            credit: money(),
+            running_balance: money(),
+          },
+        },
+      },
+    },
+  },
   PushSyncRequest: {
     type: 'object',
     required: ['device_id', 'entries'],
@@ -989,6 +1087,27 @@ const paths: any = {
   '/subscriptions/change-plan': {
     post: { tags: ['Subscriptions'], summary: 'Upgrade/downgrade the tenant plan (admin)', requestBody: reqBody('ChangePlanRequest'), responses: { '200': dataResp('Updated subscription overview', ref('SubscriptionOverview')), ...errorResponses } },
   },
+
+  // ─── General Ledger (Sprint 18) ───
+  '/accounts': {
+    get: { tags: ['Accounts'], summary: 'Chart of accounts as a tree', responses: { '200': dataResp('Account tree', { type: 'array', items: ref('Account') }), ...errorResponses } },
+    post: { tags: ['Accounts'], summary: 'Create a ledger account (admin)', requestBody: reqBody('CreateAccountRequest'), responses: { '201': dataResp('Created account', ref('Account')), ...errorResponses } },
+  },
+  '/accounts/{id}/ledger': {
+    get: {
+      tags: ['Accounts'], summary: 'Account ledger with running balance',
+      parameters: [pathId('id', 'Account UUID'), query('from', dateStr()), query('to', dateStr())],
+      responses: { '200': dataResp('Account ledger', ref('AccountLedger')), ...errorResponses },
+    },
+  },
+  '/journals': {
+    get: {
+      tags: ['Journals'], summary: 'List journal entries with their lines (paginated)',
+      parameters: [...paginationQuery, query('from', dateStr()), query('to', dateStr()), query('reference_type', { type: 'string' }), query('reference_id', uuid())],
+      responses: { '200': listResp('Journal entries', ref('JournalEntry')), ...errorResponses },
+    },
+    post: { tags: ['Journals'], summary: 'Post a balanced manual journal (admin)', requestBody: reqBody('CreateJournalRequest'), responses: { '201': dataResp('Posted journal entry', ref('JournalEntry')), ...errorResponses } },
+  },
 };
 
 export const openapiDocument: any = {
@@ -1023,6 +1142,8 @@ export const openapiDocument: any = {
     { name: 'AI', description: 'AI-assisted features' },
     { name: 'Settings', description: 'Tenant configuration' },
     { name: 'Subscriptions', description: 'Plan & usage' },
+    { name: 'Accounts', description: 'Chart of accounts & account ledgers (GL)' },
+    { name: 'Journals', description: 'Double-entry journal entries (GL)' },
   ],
   components: {
     securitySchemes: {

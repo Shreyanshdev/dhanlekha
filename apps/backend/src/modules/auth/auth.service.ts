@@ -6,6 +6,7 @@ import { withTransaction } from '../../database/transaction';
 import { TenantRepository } from '../../repositories/tenant.repo';
 import { UserRepository } from '../../repositories/user.repo';
 import { BranchRepository } from '../../repositories/branch.repo';
+import { ensureChartOfAccounts } from '../../accounting/ledger.service';
 import type { Tenant, User } from '@dhanlekha/shared';
 import env from '../../config/env';
 
@@ -79,6 +80,9 @@ export async function registerTenant(data: any) {
       prefix: 'INV',
       next_number: 1,
     });
+
+    // Seed the default double-entry chart of accounts (Sprint 18).
+    await ensureChartOfAccounts(tenantId, trx);
 
     return {
       tenant: { id: tenantId, name: tenantName, planId: planId || 'starter' },

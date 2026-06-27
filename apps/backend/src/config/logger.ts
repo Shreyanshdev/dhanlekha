@@ -13,10 +13,11 @@ import env from './env';
  *   logger.error({ err }, 'Payment processing failed');
  */
 const logger = pino({
-  level: env.nodeEnv === 'production' ? 'info' : 'debug',
+  // Silence logs under the test runner; info in prod; debug in dev.
+  level: env.nodeEnv === 'test' ? 'silent' : env.nodeEnv === 'production' ? 'info' : 'debug',
 
   // In dev, pipe through pino-pretty for human-readable output
-  transport: env.nodeEnv !== 'production'
+  transport: env.nodeEnv !== 'production' && env.nodeEnv !== 'test'
     ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:HH:MM:ss' } }
     : undefined,
 

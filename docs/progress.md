@@ -4,10 +4,16 @@
 
 ---
 
-## Current Sprint: Sprint 18 — Double-Entry General Ledger
+## Current Sprint: Sprint 19 — Accounts Payable & Supplier Payments
 **Status:** ⬜ Not Started
 **Phase:** 4.5 — Premium ERP Backend (Sprints 17–29)
-**Previous:** Sprint 17 (Accounting Foundations & Tech-Debt Cleanup) ✅ Complete
+**Previous:** Sprint 18 (Double-Entry General Ledger) ✅ Complete
+
+> **Sprint 18 ✅** — The double-entry General Ledger is live: `chart_of_accounts`,
+> `journal_entries`, `journal_lines`, a default chart of accounts seeded per tenant,
+> a balanced `postJournal` service, and journal postings hooked into invoice,
+> payment, purchase, and expense flows. A full automated test suite (Vitest +
+> Supertest, **46 tests**) now covers Sprint 17 + Sprint 18.
 
 > Backend Sprints 0–16 are complete. Phase 4.5 (Sprints 17–29) adds the premium ERP layer
 > (accounting, GST, orders, CRM, platform) and Phase 4.6 (Sprints 30–32) adds offline resilience,
@@ -326,8 +332,18 @@
 - `packages/shared/types.ts` — add `Subscription` interface
 
 ### Sprint 18: Double-Entry General Ledger
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 **Goal:** chart_of_accounts, journal_entries, journal_lines; default CoA seed; postJournal service; hook invoice/payment/purchase/expense postings.
+
+**Delivered:**
+- **Migration** `20260628120000_sprint18_general_ledger.ts` — `chart_of_accounts` (hierarchical, `account_code`/`account_type`/`parent_id`, system + active flags), `journal_entries` (date, narration, reference_type/id, status), `journal_lines` (account_id, debit/credit in paise).
+- **Chart of Accounts** (`src/accounting/coa.ts`) — stable `ACCOUNTS` codes + `DEFAULT_CHART_OF_ACCOUNTS` (Assets/Liabilities/Income/Expense/Equity) seeded idempotently per tenant on registration; settlement-account helper by payment mode.
+- **Ledger service** (`src/accounting/ledger.service.ts`) — `ensureChartOfAccounts`, `resolveCodes`, and `postJournal` enforcing debit=credit balance, non-zero, and one-sided lines; all postings transactional.
+- **GL hooks** — `invoices` (Cash/AR + Discount ↔ Sales + GST Output), `payments` (Cash/Bank ↔ AR), `expenses` (Expense ↔ Cash/Bank), `purchases` (Purchases + GST Input ↔ AP/Cash).
+- **APIs** — `GET /accounts` (CoA tree), `POST /accounts` (admin), `GET /accounts/:id/ledger` (running balance), `GET /journals`, `POST /journals` (admin, balance-enforced); documented in OpenAPI.
+- **Tests** — `ledger.test.ts` covers CoA seeding, accounts API, manual journal + balance enforcement, account ledger math, and balanced postings from invoice/expense flows.
+
+**Testing milestone (Sprint 17 + 18):** introduced Vitest + Supertest with an isolated SQLite test DB (`globalSetup` migrate+seed, serial execution, WAL), helper utilities, and **46 passing tests** across money math, invoices, quotas, settings, subscriptions, audit log, and the ledger. Fixed `requireRole` to return `403` (not `401`).
 
 ### Sprint 19: Accounts Payable & Supplier Payments
 **Status:** ⬜ Not Started

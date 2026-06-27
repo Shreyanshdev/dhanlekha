@@ -9,6 +9,8 @@ import { findBestOfferForItem } from '../offers/offers.service';
 import { withTransaction } from '../../database/transaction';
 import { NotFoundError, BadRequestError } from '../../utils/errors';
 import { lineAmount, percentageOf, roundPaise } from '../../utils/money';
+import { postJournal } from '../../accounting/ledger.service';
+import { ACCOUNTS } from '../../accounting/coa';
 import type { CreateInvoiceInput } from './invoices.validator';
 import type { Invoice, InvoiceItem, Product, Inventory } from '@dhanlekha/shared';
 
@@ -176,6 +178,31 @@ export async function createInvoice(
 
     // 5b. Meter monthly invoice usage for SaaS plan quota enforcement.
     await new UsageRepository(tenantId, trx).increment(INVOICE_QUOTA_FEATURE);
+
+    // 5c. Post the double-entry journal for this sale (Sprint 18 GL):
+    //   Dr Cash (paid) + Dr Accounts Receivable (due) + Dr Discounts Allowed
+    //   Cr Sales (subtotal) + Cr GST Output Payable (tax)
+    if (subtotal > 0) {
+      const cashPortion = Math.min(Math.max(data.amount_paid, 0), finalAmount);
+      const arPortion = finalAmount - cashPortion;
+      const lines = [
+        { account_code: ACCOUNTS.CASH, debit: cashPortion },
+        { account_code: ACCOUNTS.ACCOUNTS_RECEIVABLE, debit: arPortion },
+        { account_code: ACCOUNTS.DISCOUNTS_ALLOWED, debit: totalDiscount },
+        { account_code: ACCOUNTS.SALES, credit: subtotal },
+        { account_code: ACCOUNTS.GST_OUTPUT_PAYABLE, credit: totalTax },
+      ].filter((l) => (l.debit ?? 0) > 0 || (l.credit ?? 0) > 0);
+
+      await postJournal(trx, {
+        tenantId,
+        branchId,
+        narration: `Invoice ${invoiceNumber}`,
+        referenceType: 'invoice',
+        referenceId: invoiceId,
+        createdBy: userId,
+        lines,
+      });
+    }
 
     // 6. Update Inventory & Log Movements
     for (const item of data.items) {

@@ -32,6 +32,8 @@ import analyticsRoutes from './modules/analytics/analytics.routes';
 import aiRoutes from './modules/ai/ai.routes';
 import settingsRoutes from './modules/settings/settings.routes';
 import subscriptionsRoutes from './modules/subscriptions/subscriptions.routes';
+import accountsRoutes from './modules/accounts/accounts.routes';
+import journalsRoutes from './modules/journals/journals.routes';
 
 const app = express();
 
@@ -90,6 +92,8 @@ app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/settings', settingsRoutes);
 app.use('/api/v1/subscriptions', subscriptionsRoutes);
+app.use('/api/v1/accounts', accountsRoutes);
+app.use('/api/v1/journals', journalsRoutes);
 
 // ── 404 Handler ──
 app.use((_req, res) => {

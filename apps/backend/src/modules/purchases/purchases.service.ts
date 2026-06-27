@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { PurchaseRepository } from '../../repositories/purchase.repo';
 import { InventoryRepository, InventoryLogRepository, InventoryBatchRepository } from '../../repositories/inventory.repo';
 import { withTransaction } from '../../database/transaction';
+import { postJournal } from '../../accounting/ledger.service';
+import { ACCOUNTS } from '../../accounting/coa';
 import { NotFoundError } from '../../utils/errors';
 import type { Purchase, PurchaseItem, InventoryLog } from '@dhanlekha/shared';
 import type { CreatePurchaseInput } from './purchases.validator';
@@ -137,6 +139,31 @@ export async function createPurchase(
         created_by: userId,
       };
       await logRepo.create(log as InventoryLog);
+    }
+
+    // Post the GL entry for this purchase (Sprint 18):
+    //   Dr Purchases (net of tax) + Dr GST Input Credit
+    //   Cr Accounts Payable (unpaid) + Cr Cash (paid)
+    if (data.total_amount > 0) {
+      const goodsValue = data.total_amount - data.tax_amount;
+      const payablePortion = data.total_amount - data.paid_amount;
+      const lines = [
+        { account_code: ACCOUNTS.PURCHASES, debit: goodsValue },
+        { account_code: ACCOUNTS.GST_INPUT_CREDIT, debit: data.tax_amount },
+        { account_code: ACCOUNTS.ACCOUNTS_PAYABLE, credit: payablePortion },
+        { account_code: ACCOUNTS.CASH, credit: data.paid_amount },
+      ].filter((l) => (l.debit ?? 0) > 0 || (l.credit ?? 0) > 0);
+
+      await postJournal(trx, {
+        tenantId,
+        branchId: data.branch_id,
+        entryDate: purchase.purchase_date,
+        narration: `Purchase ${purchaseNumber}`,
+        referenceType: 'purchase',
+        referenceId: purchaseId,
+        createdBy: userId,
+        lines,
+      });
     }
 
     return purchase;

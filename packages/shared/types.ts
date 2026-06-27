@@ -438,6 +438,49 @@ export interface ProductAiData {
   updated_at: string;
 }
 
+// ─── Sprint 18: Double-Entry General Ledger ───
+
+export type AccountType = 'asset' | 'liability' | 'income' | 'expense' | 'equity';
+
+export interface ChartOfAccount {
+  id: string;
+  tenant_id: string;
+  account_code: string;
+  name: string;
+  account_type: AccountType;
+  parent_id: string | null;
+  is_system: boolean;
+  is_active: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JournalEntry {
+  id: string;
+  tenant_id: string;
+  branch_id: string | null;
+  entry_date: string; // YYYY-MM-DD
+  narration: string | null;
+  reference_type: string; // invoice | payment | purchase | expense | manual
+  reference_id: string | null;
+  status: 'posted' | 'void';
+  created_by: string | null;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JournalLine {
+  id: string;
+  tenant_id: string;
+  journal_entry_id: string;
+  account_id: string;
+  debit: number; // paise
+  credit: number; // paise
+  created_at: string;
+}
+
 // ─── API Response Contracts ───
 
 export interface ApiResponse<T> {
