@@ -7,7 +7,7 @@ import * as controller from './analytics.controller';
 const router = Router();
 
 router.use(requireAuth);
-router.use(requireRole(['admin', 'owner'])); // Only admins can see analytics
+router.use(requireRole(['admin'])); // Only admins can see analytics
 
 /**
  * GET /api/v1/analytics/daily

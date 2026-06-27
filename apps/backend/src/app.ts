@@ -1,12 +1,15 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import swaggerUi from 'swagger-ui-express';
+import { openapiDocument } from './config/openapi';
 
 // Middleware
 import requestLogger from './middleware/requestLogger.middleware';
 import errorHandler from './middleware/errorHandler.middleware';
 import { globalLimiter, authLimiter, heavyLimiter } from './middleware/rateLimit.middleware';
 import { sanitiseInput } from './middleware/sanitise.middleware';
+import { auditLog } from './middleware/audit.middleware';
 
 // Routes
 import healthRoutes from './modules/health/health.routes';
@@ -27,6 +30,8 @@ import syncRoutes from './modules/sync/sync.routes';
 import alertsRoutes from './modules/alerts/alerts.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
 import aiRoutes from './modules/ai/ai.routes';
+import settingsRoutes from './modules/settings/settings.routes';
+import subscriptionsRoutes from './modules/subscriptions/subscriptions.routes';
 
 const app = express();
 
@@ -44,6 +49,17 @@ app.use(sanitiseInput);
 
 // ── Request Logging ──
 app.use(requestLogger);
+
+// ── Audit Logging (records mutations to audit_logs after each response) ──
+app.use(auditLog);
+
+// ── API Documentation (Swagger UI + raw OpenAPI spec) ──
+app.get('/api/v1/docs.json', (_req, res) => res.json(openapiDocument));
+app.use(
+  '/api/v1/docs',
+  swaggerUi.serve,
+  swaggerUi.setup(openapiDocument, { customSiteTitle: 'DhanLekha ERP API' })
+);
 
 // ── API Routes ──
 // Health (no rate limiting — used by load balancers)
@@ -72,6 +88,8 @@ app.use('/api/v1/sync', syncRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/ai', aiRoutes);
+app.use('/api/v1/settings', settingsRoutes);
+app.use('/api/v1/subscriptions', subscriptionsRoutes);
 
 // ── 404 Handler ──
 app.use((_req, res) => {

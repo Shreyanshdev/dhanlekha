@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { OfferRepository } from '../../repositories/offer.repo';
+import { roundPaise, percentageOf } from '../../utils/money';
 import { NotFoundError, BadRequestError } from '../../utils/errors';
 import type { Offer } from '@dhanlekha/shared';
 import type { CreateOfferInput, UpdateOfferInput } from './offers.validator';
@@ -121,9 +122,10 @@ export async function findBestOfferForItem(
   category: string | null,
   unitPrice: number,
   quantity: number,
-  invoiceSubtotal: number
+  invoiceSubtotal: number,
+  trx?: import('knex').Knex.Transaction
 ): Promise<{ offer: Offer; discountAmount: number } | null> {
-  const offerRepo = new OfferRepository(tenantId);
+  const offerRepo = new OfferRepository(tenantId, trx);
   const today = new Date().toISOString().split('T')[0];
 
   const candidates = await offerRepo.findOffersForProduct(branchId, productId, category, today);
@@ -137,17 +139,17 @@ export async function findBestOfferForItem(
     }
 
     let discountAmount = 0;
-    const lineTotal = unitPrice * quantity;
+    const lineTotal = roundPaise(unitPrice * quantity); // whole paise
 
     switch (offer.offer_type) {
       case 'flat':
-        // Fixed amount off the line total
+        // Fixed amount (paise) off the line total
         discountAmount = Math.min(offer.discount_value, lineTotal);
         break;
 
       case 'percentage':
         // Percentage off the line total
-        discountAmount = (lineTotal * offer.discount_value) / 100;
+        discountAmount = percentageOf(lineTotal, offer.discount_value);
         break;
 
       case 'bogo':
@@ -160,13 +162,13 @@ export async function findBestOfferForItem(
         break;
 
       case 'bundle':
-        // Fixed price for a bundle — discount = (normal total - bundle price)
+        // Fixed bundle price (paise) — discount = (normal total - bundle price)
         discountAmount = Math.max(0, lineTotal - offer.discount_value);
         break;
     }
 
-    // Round to 2 decimal places
-    discountAmount = Math.round(discountAmount * 100) / 100;
+    // Money is integer paise — never leave a fractional paise.
+    discountAmount = roundPaise(discountAmount);
 
     if (discountAmount > 0 && (!bestMatch || discountAmount > bestMatch.discountAmount)) {
       bestMatch = { offer, discountAmount };

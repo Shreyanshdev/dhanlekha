@@ -251,7 +251,7 @@ AI Service (Python FastAPI) — optional
 | Phase 2 | 3–10 | Core ERP backend APIs | ✅ Complete |
 | Phase 3 | 11–14 | System features (sync, alerts, AI) | ✅ Complete |
 | Phase 4 | 15–16 | Performance & production readiness | ✅ Complete |
-| Phase 4.5 | 17–29 | Premium ERP backend (accounting, GST, orders, CRM, platform) | ⬜ Planned |
+| Phase 4.5 | 17–29 | Premium ERP backend (accounting, GST, orders, CRM, platform) | 🔄 In Progress (Sprint 17 ✅, Sprint 18 next) |
 | Phase 4.6 | 30–32 | Offline resilience, drafts/chit, bulk onboarding, licensing | ⬜ Planned |
 | Phase 5 | 33–41 | Frontend (Next.js + Electron) | ⬜ Planned |
 
