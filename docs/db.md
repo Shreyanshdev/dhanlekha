@@ -10,7 +10,7 @@
 | Field | Description |
 |------|-------------|
 | **Document** | ERP Database ERD — Full Schema Reference |
-| **Scope** | 25 tables — Plans, Tenants, Billing, Inventory, Payments, Ledger, AI, Sync, Reporting |
+| **Scope** | 25 core tables (Plans, Tenants, Billing, Inventory, Payments, Ledger, AI, Sync, Reporting) + Phase 4.5 premium-ERP extension schema (Accounting, GST, AP, Orders, Advanced Inventory, CRM, Platform — Section 17) |
 | **Target DB** | SQLite (offline) + PostgreSQL (cloud sync) |
 | **Audience** | Backend engineers, database architects, tech leads |
 
@@ -746,6 +746,502 @@ These are the most important database operation sequences in the system. Each wo
 |expenses.category|rent, electricity, wages, packaging, transport, other|Extend as needed|
 
 
+
+# **17. Premium ERP Extension Schema (Phase 4.5 — Sprints 17–29)**
+
+This section defines the tables added to evolve the system from a billing/POS suite into a premium ERP + CRM platform. All tables follow the global conventions in Section 2 (uuid PKs, `tenant_id` scoping, snake_case, `is_` booleans, `deleted_at` soft delete where applicable, monetary values in `decimal`). Branch-scoped tables also carry `branch_id`.
+
+## **17.1 Table Groups Added**
+
+|**Group**|**Tables**|**Sprint**|
+| :- | :- | :- |
+|Accounting (GL)|chart\_of\_accounts, journal\_entries, journal\_lines, financial\_years, opening\_balances|18, 20|
+|Accounts Payable|supplier\_ledger, supplier\_payments, supplier\_payment\_allocations|19|
+|GST & e-Invoicing|einvoice\_logs, eway\_bills (+ tax columns on invoices/invoice\_items)|21|
+|Returns|credit\_notes, credit\_note\_items, debit\_notes, debit\_note\_items|22|
+|Bank & Cash|bank\_accounts, cash\_registers, bank\_transactions|23|
+|Order Management|quotations, quotation\_items, sales\_orders, sales\_order\_items, purchase\_orders, purchase\_order\_items, goods\_receipts, goods\_receipt\_items, delivery\_challans, delivery\_challan\_items|24|
+|Advanced Inventory|stock\_transfers, stock\_transfer\_items, price\_lists, price\_list\_items, units, uom\_conversions, product\_serials|25|
+|CRM|leads, opportunities, pipeline\_stages, activities, customer\_segments, segment\_members, loyalty\_accounts, loyalty\_transactions|26, 27|
+|Communication|campaigns, communication\_logs, message\_templates|27|
+|Access & Auth|roles, permissions, role\_permissions, refresh\_tokens, password\_resets|28|
+|Platform|audit\_logs, api\_keys, webhooks, webhook\_deliveries, files, notifications|17, 29|
+
+---
+
+## **17.2 Accounting — General Ledger**
+
+### **chart\_of\_accounts**
+Per-tenant ledger accounts. Seeded with a default set on registration.
+
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id|Account owner|
+|**account\_code**|string|NOT NULL|Numeric/string code — e.g. '1001'|
+|**name**|string|NOT NULL|e.g. 'Cash', 'Sales', 'GST Output Payable'|
+|**account\_type**|string|NOT NULL|'asset', 'liability', 'income', 'expense', 'equity'|
+|**parent\_id**|uuid|FK → chart\_of\_accounts.id (nullable)|For account hierarchy|
+|**is\_system**|boolean|DEFAULT false|System accounts cannot be deleted|
+|**is\_active**|boolean|DEFAULT true||
+|**created\_at**|timestamp|NOT NULL||
+
+### **journal\_entries**
+Header for one balanced double-entry transaction.
+
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**branch\_id**|uuid|FK → branches.id (nullable)||
+|**entry\_date**|date|NOT NULL|Accounting date|
+|**narration**|text|nullable|Description|
+|**reference\_type**|string|nullable|'invoice', 'payment', 'purchase', 'expense', 'credit\_note', 'manual', etc.|
+|**reference\_id**|uuid|nullable|Source document id|
+|**status**|string|NOT NULL|'posted', 'draft', 'reversed'|
+|**created\_by**|uuid|FK → users.id||
+|**created\_at**|timestamp|NOT NULL||
+
+### **journal\_lines**
+Debit/credit lines. `SUM(debit) = SUM(credit)` per entry is enforced in the service layer.
+
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**journal\_entry\_id**|uuid|FK → journal\_entries.id||
+|**account\_id**|uuid|FK → chart\_of\_accounts.id||
+|**debit**|decimal(15,2)|DEFAULT 0||
+|**credit**|decimal(15,2)|DEFAULT 0||
+|**note**|string|nullable||
+
+### **financial\_years**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**start\_date**|date|NOT NULL||
+|**end\_date**|date|NOT NULL||
+|**status**|string|NOT NULL|'open', 'closed'|
+
+### **opening\_balances**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**financial\_year\_id**|uuid|FK → financial\_years.id||
+|**account\_id**|uuid|FK → chart\_of\_accounts.id||
+|**debit**|decimal(15,2)|DEFAULT 0||
+|**credit**|decimal(15,2)|DEFAULT 0||
+
+---
+
+## **17.3 Accounts Payable**
+
+### **supplier\_ledger**
+Mirror of `customer_ledger` for the payable side.
+
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**supplier\_id**|uuid|FK → suppliers.id||
+|**entry\_type**|string|NOT NULL|'purchase', 'payment', 'debit\_note', 'adjustment'|
+|**reference\_id**|uuid|NOT NULL|purchase\_id / supplier\_payment\_id|
+|**debit**|decimal(15,2)|DEFAULT 0|Reduces payable (we pay)|
+|**credit**|decimal(15,2)|DEFAULT 0|Increases payable (we owe)|
+|**running\_balance**|decimal(15,2)|NOT NULL|Positive = we owe supplier|
+|**created\_at**|timestamp|NOT NULL||
+
+### **supplier\_payments**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**supplier\_id**|uuid|FK → suppliers.id||
+|**amount**|decimal(15,2)|NOT NULL||
+|**unallocated\_amount**|decimal(15,2)|DEFAULT 0|Advance to supplier|
+|**payment\_mode**|string|NOT NULL|'cash', 'upi', 'bank\_transfer', 'cheque'|
+|**bank\_account\_id**|uuid|FK → bank\_accounts.id (nullable)||
+|**reference\_note**|string|nullable||
+|**created\_at**|timestamp|NOT NULL||
+|**deleted\_at**|timestamp|nullable||
+
+### **supplier\_payment\_allocations**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**supplier\_payment\_id**|uuid|FK → supplier\_payments.id||
+|**purchase\_id**|uuid|FK → purchases.id||
+|**amount**|decimal(15,2)|NOT NULL||
+
+---
+
+## **17.4 GST & e-Invoicing**
+
+**Column additions** (Sprint 21): `invoices` and `invoice_items` gain `cgst_amount`, `sgst_amount`, `igst_amount` (decimal(15,2)); `invoices` gains `place_of_supply` (string, state code) and `is_interstate` (boolean). The legacy `tax_amount` becomes the sum of the three components. The same split is added to `purchases`/`purchase_items`, `credit_notes`, and `debit_notes`.
+
+### **einvoice\_logs**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**invoice\_id**|uuid|FK → invoices.id||
+|**irn**|string|nullable|Invoice Reference Number from IRP|
+|**ack\_no**|string|nullable|Acknowledgement number|
+|**ack\_date**|timestamp|nullable||
+|**signed\_qr**|text|nullable|Base64 signed QR payload|
+|**status**|string|NOT NULL|'pending', 'generated', 'cancelled', 'failed'|
+|**error\_message**|text|nullable||
+|**created\_at**|timestamp|NOT NULL||
+
+### **eway\_bills**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**invoice\_id**|uuid|FK → invoices.id||
+|**eway\_bill\_no**|string|nullable||
+|**valid\_until**|timestamp|nullable||
+|**transporter\_name**|string|nullable||
+|**vehicle\_no**|string|nullable||
+|**status**|string|NOT NULL|'pending', 'generated', 'cancelled', 'expired'|
+|**created\_at**|timestamp|NOT NULL||
+
+---
+
+## **17.5 Credit / Debit Notes**
+
+### **credit\_notes** (sales returns / adjustments)
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**branch\_id**|uuid|FK → branches.id||
+|**customer\_id**|uuid|FK → customers.id (nullable)||
+|**invoice\_id**|uuid|FK → invoices.id (nullable)|Original invoice|
+|**note\_number**|string|NOT NULL|Sequenced — e.g. CN-0001|
+|**reason**|string|nullable||
+|**subtotal**|decimal(15,2)|NOT NULL||
+|**cgst\_amount**|decimal(15,2)|DEFAULT 0||
+|**sgst\_amount**|decimal(15,2)|DEFAULT 0||
+|**igst\_amount**|decimal(15,2)|DEFAULT 0||
+|**total\_amount**|decimal(15,2)|NOT NULL||
+|**created\_by**|uuid|FK → users.id||
+|**created\_at**|timestamp|NOT NULL||
+|**deleted\_at**|timestamp|nullable||
+
+### **credit\_note\_items**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**credit\_note\_id**|uuid|FK → credit\_notes.id||
+|**product\_id**|uuid|FK → products.id||
+|**quantity**|decimal(15,3)|NOT NULL|Quantity returned|
+|**unit\_price**|decimal(15,2)|NOT NULL||
+|**gst\_rate**|decimal(5,2)|NOT NULL||
+|**total**|decimal(15,2)|NOT NULL||
+
+### **debit\_notes** / **debit\_note\_items** (purchase returns)
+Same structure as credit notes but reference `supplier_id` and `purchase_id`; `debit_note_items` reference `purchase_price` instead of `unit_price`.
+
+---
+
+## **17.6 Bank & Cash**
+
+### **bank\_accounts**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**branch\_id**|uuid|FK → branches.id (nullable)||
+|**name**|string|NOT NULL||
+|**account\_no**|string|nullable||
+|**ifsc**|string|nullable||
+|**account\_id**|uuid|FK → chart\_of\_accounts.id|Mapped GL account|
+|**opening\_balance**|decimal(15,2)|DEFAULT 0||
+|**is\_active**|boolean|DEFAULT true||
+
+### **cash\_registers**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**branch\_id**|uuid|FK → branches.id||
+|**name**|string|NOT NULL||
+|**account\_id**|uuid|FK → chart\_of\_accounts.id||
+|**current\_balance**|decimal(15,2)|DEFAULT 0||
+
+### **bank\_transactions**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**bank\_account\_id**|uuid|FK → bank\_accounts.id||
+|**txn\_type**|string|NOT NULL|'deposit', 'withdrawal', 'transfer'|
+|**amount**|decimal(15,2)|NOT NULL||
+|**reference\_type**|string|nullable|'payment', 'expense', 'supplier\_payment'|
+|**reference\_id**|uuid|nullable||
+|**is\_reconciled**|boolean|DEFAULT false||
+|**txn\_date**|date|NOT NULL||
+|**created\_at**|timestamp|NOT NULL||
+
+---
+
+## **17.7 Order Management**
+
+All order documents share a common shape: a header (`tenant_id`, `branch_id`, party id, document number, `status`, monetary totals, dates, `created_by`, `deleted_at`) and a child `*_items` table (parent id, `product_id`, `quantity`, price, `total`).
+
+- **quotations / quotation\_items** — `customer_id`; `status` ('draft','sent','accepted','rejected','converted'); `valid_until`; `converted_to` (sales\_order/invoice id).
+- **sales\_orders / sales\_order\_items** — `customer_id`; `status` ('confirmed','partial','fulfilled','cancelled'); `quotation_id` (nullable).
+- **purchase\_orders / purchase\_order\_items** — `supplier_id`; `status` ('draft','sent','partial','received','closed'); `expected_date`.
+- **goods\_receipts / goods\_receipt\_items** — `purchase_order_id`; received quantities; feeds inventory + creates the `purchases` record.
+- **delivery\_challans / delivery\_challan\_items** — `customer_id`; `sales_order_id` (nullable); dispatch details.
+
+---
+
+## **17.8 Advanced Inventory**
+
+**Column additions:** `inventory` gains `reorder_level` and `reorder_quantity` (decimal(15,3)).
+
+### **stock\_transfers / stock\_transfer\_items**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**from\_branch\_id**|uuid|FK → branches.id||
+|**to\_branch\_id**|uuid|FK → branches.id||
+|**status**|string|NOT NULL|'pending', 'in\_transit', 'received', 'cancelled'|
+|**created\_at**|timestamp|NOT NULL||
+
+`stock_transfer_items`: `stock_transfer_id`, `product_id`, `quantity`. Each transfer creates two `inventory_logs` rows (out at source, in at destination).
+
+### **price\_lists / price\_list\_items**
+- `price_lists`: `tenant_id`, `name`, `type` ('retail','wholesale','customer'), `customer_id` (nullable), `is_active`.
+- `price_list_items`: `price_list_id`, `product_id`, `price`, optional `min_quantity` for slab pricing.
+
+### **units / uom\_conversions**
+- `units`: `tenant_id`, `name` ('piece','box','kg'), `symbol`.
+- `uom_conversions`: `product_id`, `from_unit_id`, `to_unit_id`, `factor` (e.g. 1 box = 12 pieces).
+
+### **product\_serials**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**product\_id**|uuid|FK → products.id||
+|**serial\_no**|string|NOT NULL|Serial / IMEI|
+|**status**|string|NOT NULL|'in\_stock', 'sold', 'returned'|
+|**invoice\_id**|uuid|FK → invoices.id (nullable)||
+
+---
+
+## **17.9 CRM**
+
+### **leads**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**name**|string|NOT NULL||
+|**phone**|string|nullable||
+|**email**|string|nullable||
+|**source**|string|nullable|'walk\_in', 'referral', 'web', 'campaign'|
+|**status**|string|NOT NULL|'new', 'contacted', 'qualified', 'lost', 'converted'|
+|**owner\_id**|uuid|FK → users.id (nullable)||
+|**created\_at**|timestamp|NOT NULL||
+
+### **opportunities**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**lead\_id**|uuid|FK → leads.id (nullable)||
+|**customer\_id**|uuid|FK → customers.id (nullable)||
+|**title**|string|NOT NULL||
+|**value**|decimal(15,2)|DEFAULT 0||
+|**stage\_id**|uuid|FK → pipeline\_stages.id||
+|**expected\_close**|date|nullable||
+|**status**|string|NOT NULL|'open', 'won', 'lost'|
+|**owner\_id**|uuid|FK → users.id (nullable)||
+
+### **pipeline\_stages**
+`tenant_id`, `name`, `sort_order`, `win_probability` (decimal).
+
+### **activities**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**type**|string|NOT NULL|'task', 'call', 'meeting', 'note'|
+|**related\_type**|string|NOT NULL|'lead', 'opportunity', 'customer'|
+|**related\_id**|uuid|NOT NULL||
+|**subject**|string|NOT NULL||
+|**due\_at**|timestamp|nullable||
+|**assigned\_to**|uuid|FK → users.id (nullable)||
+|**is\_done**|boolean|DEFAULT false||
+
+### **customer\_segments / segment\_members**
+- `customer_segments`: `tenant_id`, `name`, `rule` (json, nullable — dynamic criteria).
+- `segment_members`: `segment_id`, `customer_id`.
+
+### **loyalty\_accounts / loyalty\_transactions**
+- `loyalty_accounts`: `tenant_id`, `customer_id` (UNIQUE), `points_balance`.
+- `loyalty_transactions`: `loyalty_account_id`, `type` ('earn','redeem','expire'), `points`, `reference_id` (invoice), `created_at`.
+
+---
+
+## **17.10 Communication**
+
+### **message\_templates**
+`tenant_id`, `name`, `channel` ('email','sms','whatsapp'), `subject` (nullable), `body` (with placeholders), `is_active`.
+
+### **campaigns**
+`tenant_id`, `name`, `channel`, `segment_id` (nullable), `template_id`, `status` ('draft','scheduled','sent'), `scheduled_at`.
+
+### **communication\_logs**
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**channel**|string|NOT NULL|'email', 'sms', 'whatsapp'|
+|**recipient**|string|NOT NULL||
+|**template\_id**|uuid|FK → message\_templates.id (nullable)||
+|**campaign\_id**|uuid|FK → campaigns.id (nullable)||
+|**status**|string|NOT NULL|'queued', 'sent', 'delivered', 'failed'|
+|**error\_message**|text|nullable||
+|**created\_at**|timestamp|NOT NULL||
+
+---
+
+## **17.11 Access Control & Authentication**
+
+### **roles / permissions / role\_permissions**
+- `roles`: `tenant_id`, `name`, `is_system`. Replaces the hardcoded admin/cashier model.
+- `permissions`: global registry — `key` (e.g. 'invoice:create', 'report:view'), `description`. Not tenant-scoped.
+- `role_permissions`: `role_id`, `permission_key`. `users` gains a `role_id` FK (the legacy `role` string is retained for backward compatibility).
+
+### **refresh\_tokens**
+`user_id`, `token_hash`, `expires_at`, `revoked_at` (nullable), `device_id`.
+
+### **password\_resets**
+`user_id`, `token_hash`, `expires_at`, `used_at` (nullable).
+
+---
+
+## **17.12 Platform**
+
+### **audit\_logs**
+Immutable trail of every mutation. Append-only.
+
+|**Field**|**Type**|**Constraint**|**Description**|
+| :- | :- | :- | :- |
+|**id**|uuid|PK||
+|**tenant\_id**|uuid|FK → tenants.id||
+|**user\_id**|uuid|FK → users.id (nullable)||
+|**action**|string|NOT NULL|'create', 'update', 'delete'|
+|**entity\_type**|string|NOT NULL|Table/module name|
+|**entity\_id**|uuid|nullable||
+|**before**|json|nullable|Prior state|
+|**after**|json|nullable|New state|
+|**ip\_address**|string|nullable||
+|**created\_at**|timestamp|NOT NULL||
+
+### **api\_keys**
+`tenant_id`, `name`, `key_hash`, `prefix`, `scopes` (json), `last_used_at`, `revoked_at` (nullable).
+
+### **webhooks / webhook\_deliveries**
+- `webhooks`: `tenant_id`, `url`, `events` (json — e.g. ['invoice.created']), `secret`, `is_active`.
+- `webhook_deliveries`: `webhook_id`, `event`, `payload` (json), `status` ('pending','success','failed'), `attempts`, `next_retry_at`, `response_code`.
+
+### **files**
+`tenant_id`, `entity_type`, `entity_id`, `file_name`, `mime_type`, `size_bytes`, `storage_path`/`url`, `uploaded_by`, `created_at`.
+
+### **notifications**
+In-app notifications distinct from the operational `alerts` table: `tenant_id`, `user_id`, `type`, `title`, `body`, `is_read`, `created_at`.
+
+---
+
+## **17.13 Extension Indexing Notes**
+
+Following the Section 13 rule (index every FK and every hot-path WHERE column), the extension adds, at minimum:
+
+- `idx_coa_tenant` → chart\_of\_accounts(tenant\_id, account\_type)
+- `idx_journal_lines_account` → journal\_lines(account\_id)
+- `idx_journal_entries_ref` → journal\_entries(tenant\_id, reference\_type, reference\_id)
+- `idx_supplier_ledger_supplier` → supplier\_ledger(supplier\_id, created\_at)
+- `idx_einvoice_invoice` → einvoice\_logs(invoice\_id)
+- `idx_credit_notes_invoice` → credit\_notes(invoice\_id)
+- `idx_bank_txn_account` → bank\_transactions(bank\_account\_id, is\_reconciled)
+- `idx_quotations_tenant` → quotations(tenant\_id, status)
+- `idx_sales_orders_tenant` → sales\_orders(tenant\_id, status)
+- `idx_purchase_orders_supplier` → purchase\_orders(supplier\_id, status)
+- `idx_stock_transfers_branches` → stock\_transfers(from\_branch\_id, to\_branch\_id)
+- `idx_product_serials_serial` → product\_serials(tenant\_id, serial\_no)
+- `idx_leads_tenant_status` → leads(tenant\_id, status)
+- `idx_opportunities_stage` → opportunities(tenant\_id, stage\_id)
+- `idx_activities_related` → activities(related\_type, related\_id)
+- `idx_comm_logs_tenant` → communication\_logs(tenant\_id, created\_at)
+- `idx_role_permissions_role` → role\_permissions(role\_id)
+- `idx_refresh_tokens_user` → refresh\_tokens(user\_id)
+- `idx_audit_logs_entity` → audit\_logs(tenant\_id, entity\_type, entity\_id)
+- `idx_webhook_deliveries_status` → webhook\_deliveries(status, next\_retry\_at)
+
+---
+
+# **18. Offline Resilience Schema (Phase 4.6 — Sprints 30–32)**
+
+This section covers schema changes for draft "chit" invoices, soft stock reservations, bulk onboarding, and tamper-resistant offline licensing. These are deltas to existing tables plus a few new local-only keys.
+
+## **18.1 Column Additions to Existing Tables**
+
+### **invoices**
+|**Change**|**Detail**|
+| :- | :- |
+|`invoice_number` → nullable|Drafts must not consume the formal GST sequence. Number is assigned only on finalize.|
+|`status` → add `'draft'`|New lifecycle: 'draft', 'paid', 'partial', 'unpaid', 'cancelled'.|
+|**token\_number** (new)|string, nullable. Daily physical chit token (e.g. 'T-405'); resets daily. Not unique across days.|
+
+### **invoice\_items**
+|**Change**|**Detail**|
+| :- | :- |
+|**is\_reserved** (new)|boolean, DEFAULT false. Marks a line as a soft hold (draft) rather than a confirmed sale.|
+
+### **inventory\_logs**
+|**Change**|**Detail**|
+| :- | :- |
+|`change_type` → add `'reserved'`|New full set: 'sale', 'purchase', 'adjustment', 'return', 'waste', 'reserved'. A draft writes a `reserved` log; finalize rewrites it to `sale`; cancel reverses it.|
+
+### **users**
+|**Change**|**Detail**|
+| :- | :- |
+|**offline\_pin\_hash** (new)|string, nullable. bcrypt hash of the cashier's 4-digit Offline PIN, set while online, used for offline auth.|
+
+## **18.2 Local System Settings (SQLite)**
+
+The `settings` key-value table additionally holds device-local, system-managed keys (not shown in the UI). These exist only in the local SQLite DB and are not synced to the cloud.
+
+|**Key**|**Stored Value**|**Purpose**|
+| :- | :- | :- |
+|**offline\_license**|signed JWT|Offline entitlement: signature, `valid_until`, `max_offline_invoices`. Verified with a bundled public key.|
+|**last\_timestamp**|epoch ms|Monotonic clock watermark. Each write advances it; a smaller `Date.now()` indicates clock tampering and triggers `SECURITY_LOCKDOWN`.|
+
+## **18.3 New Enum Value Reference**
+
+|**Table.Column**|**Added Value(s)**|
+| :- | :- |
+|invoices.status|draft|
+|invoice\_logs.change\_type *(inventory\_logs)*|reserved|
+
+## **18.4 Finalize Workflow (Draft → Invoice)**
+
+1. Run the offline license-security guard (monotonic clock, signature, expiry, volume quota).
+1. Lock `invoice_sequences` (SELECT FOR UPDATE) → assign formal `invoice_number`.
+1. Set `invoices.status` from 'draft' to its paid/partial/unpaid state; clear `token_number` linkage as needed.
+1. Rewrite each `inventory_logs` row for this invoice from `change_type='reserved'` to `'sale'`; set `invoice_items.is_reserved=false`.
+1. Append `customer_ledger` (debit = final\_amount) and update `customers.total_due`.
+1. Increment `usage_tracking.used_count` for `max_invoices_per_month`.
+
+---
 
 *End of Document  —  AI-Powered Offline ERP Billing System*
 AI-Powered Offline ERP Billing System

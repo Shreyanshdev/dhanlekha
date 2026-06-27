@@ -30,6 +30,22 @@ The system will provide:
 - AI-powered automation (product entry, predictions)
 - Analytics and reporting dashboard
 
+### Premium ERP Scope (Phase 4.5 — Sprints 17–29)
+
+To reach parity with premium ERP/accounting suites (Marg, Tally, Vyapar, Zoho Books) and CRM platforms (Salesforce, Zoho CRM), the system additionally provides:
+
+- Double-entry accounting (chart of accounts, journals, financial statements)
+- Accounts payable and supplier payments
+- Full GST compliance (CGST/SGST/IGST, GSTR-1/3B, e-invoice/IRN, e-way bill)
+- Credit/debit notes and sales/purchase returns
+- Bank and cash management with reconciliation
+- Order management (quotation, sales order, purchase order, GRN, delivery challan)
+- Advanced inventory (FEFO batches, FIFO/weighted-average valuation, multi-UoM, price lists, serial tracking)
+- CRM (leads, opportunities, pipeline, activities, loyalty, segmentation)
+- Multi-channel communication (email, SMS, WhatsApp, campaigns)
+- Granular role-based access control and complete authentication
+- Platform services (public API, webhooks, subscription billing, document generation, file storage)
+
 ---
 
 ## 1.3 Definitions
@@ -252,6 +268,173 @@ Message Queue (Kafka - future)
 - Smart product suggestions
 - Demand forecasting
 - Price suggestions
+
+---
+
+# 3A. Premium ERP Functional Requirements (Phase 4.5)
+
+> These requirements extend the core system delivered in Sprints 0–16. They are implemented backend-first in Sprints 17–29.
+
+---
+
+## 3.16 Double-Entry Accounting & General Ledger
+
+- Maintain a per-tenant chart of accounts (asset, liability, income, expense, equity)
+- Seed a default chart of accounts on tenant registration
+- Record every financial event as a balanced journal entry (total debit = total credit)
+- Auto-post journals from invoices, payments, purchases, expenses, and returns
+- Support manual journal entries (admin only) with mandatory narration
+- Provide per-account ledger with running balance
+- The customer ledger and supplier ledger act as subledgers reconciling to control accounts
+
+## 3.17 Financial Reporting
+
+- Trial Balance for any date range
+- Profit & Loss statement
+- Balance Sheet
+- Cash Flow statement
+- Day Book (chronological journal listing)
+- Financial-year management with opening balances and year-end close
+
+## 3.18 Accounts Payable & Supplier Payments
+
+- Maintain a supplier ledger (debit/credit/running balance)
+- Record supplier payments and allocate them to purchases
+- Track outstanding payable per supplier
+- Purchases post payable entries to the general ledger
+
+## 3.19 GST Compliance & e-Invoicing
+
+- Split tax into CGST, SGST, and IGST based on place of supply
+- Determine intra-state vs inter-state supply automatically
+- Maintain HSN/SAC codes and produce HSN summaries
+- Generate GSTR-1 (outward supplies) and GSTR-3B (summary) reports
+- Generate e-invoices (IRN + signed QR) via a pluggable GSP/IRP adapter
+- Generate e-way bills with transporter and vehicle details
+- Adapter must be optional and sandbox-capable so core billing works offline
+
+## 3.20 Credit / Debit Notes & Returns
+
+- Issue credit notes against invoices (sales returns / adjustments)
+- Issue debit notes against purchases (purchase returns)
+- Reverse inventory, tax, ledger, and GL postings correctly
+- Include notes in GST returns
+
+## 3.21 Bank & Cash Management
+
+- Manage multiple bank accounts and cash registers per branch
+- Link payments and expenses to a specific bank/cash account
+- Record deposits, withdrawals, and transfers
+- Bank reconciliation against statement lines
+- Cash book and day-close
+
+## 3.22 Order Management
+
+- Quotations that convert to sales orders or invoices
+- Sales orders with fulfilment tracking
+- Purchase orders with goods-receipt notes (GRN)
+- Delivery challans
+- Document status lifecycle and source/target linkage for audit
+
+## 3.23 Advanced Inventory
+
+- Batch tracking with FEFO consumption wired into billing
+- Stock valuation methods: FIFO and weighted-average
+- Multiple units of measure with conversion factors
+- Price lists and customer/tier-specific pricing
+- Serial number / IMEI tracking
+- Reorder levels with automatic purchase-order suggestions
+- Stock transfers between branches
+
+## 3.24 Customer Relationship Management (CRM)
+
+- Lead capture with source and status
+- Opportunities with value, stage, and expected close date
+- Configurable sales pipeline stages
+- Activities: tasks, calls, meetings, notes, follow-ups
+- Lead → opportunity → customer conversion
+- Customer segmentation
+- Loyalty program (points earned and redeemed)
+
+## 3.25 Communication & Engagement
+
+- Transactional and bulk messaging over email, SMS, and WhatsApp
+- Message templates (payment reminders, invoices, offers)
+- Marketing campaigns to customer segments
+- Communication logs for auditability
+- Pluggable provider interface for each channel
+
+## 3.26 Access Control & Authentication
+
+- Granular role-based access control with custom roles and a permission matrix
+- Permission checks per action (e.g. `invoice:create`)
+- Complete auth lifecycle: login, logout, token refresh
+- Password reset and change-password flows
+- Optional two-factor authentication (TOTP)
+
+## 3.27 Platform Services & Integrations
+
+- Public API with issued API keys
+- Webhooks with delivery retry
+- OpenAPI/Swagger documentation for all endpoints
+- SaaS subscription billing via payment gateway (Razorpay/Stripe)
+- Server-side document generation (PDF invoices/reports, Excel export)
+- File and document storage (product images, attachments)
+- Sync apply worker that writes queued offline changes to domain tables
+- Audit logging of all mutations
+- Observability (metrics, tracing) and an automated test suite
+
+---
+
+# 3B. Offline Resilience, Drafts & Hardware (Phase 4.6 + Frontend)
+
+> These requirements harden real retail-floor and offline operation. Backend items are delivered in Phase 4.6 (Sprints 30–32); client items in Phase 5.
+
+---
+
+## 3.28 Draft "Chit" Invoices & Soft Reserve
+
+- Create draft invoices ("chits") without consuming a formal GST invoice number
+- Drafts carry a daily `token_number` (e.g. T-405) for physical floor chits
+- Soft-reserve stock for draft items (decrement quantity, log as `reserved`) to prevent offline double-selling
+- Draft does not post to the customer ledger
+- Finalize converts a draft into a formal sequenced invoice, turns reserved stock into a sale, and posts the ledger
+- Cancelling a draft releases the reserved stock
+
+## 3.29 Bulk Data Import (Onboarding)
+
+- Import products and customers from CSV (`multipart/form-data`)
+- Entire import runs in a single transaction; any invalid row rolls back the whole batch
+- Return a per-row validation error report
+
+## 3.30 Additive Inventory Sync
+
+- Inventory quantity must not use last-write-wins / server-wins conflict resolution
+- The sync worker replays each device's stock-movement deltas so concurrent offline sales subtract additively across branches
+
+## 3.31 Offline Security & Licensing
+
+- Enforce a signed offline license (JWT) verified with a public key before any offline write
+- Monotonic clock guard: reject operations if the system clock moves backward (anti-time-travel lockdown)
+- Enforce license expiry (require sync) and an offline invoice-volume quota
+- Lockdown/clear error codes: `SECURITY_LOCKDOWN`, `LICENSE_EXPIRED`, `QUOTA_EXCEEDED`
+
+## 3.32 Offline Authentication
+
+- Cashiers can authenticate offline using a hashed 4-digit Offline PIN stored locally
+- On network failure at boot, validate the offline license and present the Offline PIN screen instead of the online login
+- Expose an offline-mode flag to disable cloud-only UI
+
+## 3.33 Local Data Persistence
+
+- Desktop client persists large local datasets in SQLite via an Electron IPC bridge (not browser localStorage)
+- Client state/persistence reads and writes through a secure context-bridge database API
+
+## 3.34 Hardware Printing
+
+- Support thermal and dot-matrix (DMP) printers via raw ESC/POS commands, bypassing the OS print spooler
+- Support a cash-drawer kick command
+- Provide a browser/OS print fallback when raw printing is unavailable
 
 ---
 
