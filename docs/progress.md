@@ -4,9 +4,10 @@
 
 ---
 
-## Current Sprint: Sprint 17 — Accounting Foundations & Tech-Debt Cleanup
+## Current Sprint: Sprint 18 — Double-Entry General Ledger
 **Status:** ⬜ Not Started
 **Phase:** 4.5 — Premium ERP Backend (Sprints 17–29)
+**Previous:** Sprint 17 (Accounting Foundations & Tech-Debt Cleanup) ✅ Complete
 
 > Backend Sprints 0–16 are complete. Phase 4.5 (Sprints 17–29) adds the premium ERP layer
 > (accounting, GST, orders, CRM, platform) and Phase 4.6 (Sprints 30–32) adds offline resilience,
@@ -285,8 +286,44 @@
 > Elevates the backend from billing/POS to a premium ERP + CRM platform. Backend-first, before frontend.
 
 ### Sprint 17: Accounting Foundations & Tech-Debt Cleanup
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 **Goal:** Money-unit standardisation, audit logging, settings/subscriptions APIs, wire offers into billing, enforce plan quotas, fix usage_tracking + scheduler, schedule ledger snapshot job.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Fix `usage_tracking` column mismatch in scheduler | ✅ Done | Scheduler queried `period`; table uses `month_year`. Reset job now prunes prior-month rows (`< YYYY-MM`) instead of mutating the PK |
+| 2 | Remove dead `'owner'` role | ✅ Done | `analytics.routes.ts` now `requireRole(['admin'])`; JWT only issues `admin`/`cashier` |
+| 3 | Quota enforcement middleware | ✅ Done | `featureGate(featureId)` resolves `tenant_overrides` → `plan_features`, enforces `limit`-type quotas against monthly usage |
+| 4 | Wire offers into billing | ✅ Done | Billing engine auto-applies best active offer per line (only when it beats the manual discount), stamps `invoice_items.offer_id`, increments `offers.used_count` in-transaction |
+| 5 | Monthly invoice quota metering | ✅ Done | `UsageRepository` increments `max_invoices_per_month` inside the invoice transaction; `POST /invoices` now gated by `featureGate` |
+| 6 | Audit logging | ✅ Done | `audit_logs` table + `AuditLogRepository` + `auditLog` middleware (records POST/PUT/PATCH/DELETE on response `finish`, secrets redacted) |
+| 7 | Money-unit standardisation | ✅ Done | **Decision: integer paise is canonical** (matches products/payments/plans/snapshots + all type comments). Added `utils/money.ts` (`roundPaise`/`percentageOf`/`lineAmount`); refactored billing + offers to whole-paise math, removing the prior sub-paise offer rounding bug |
+| 8 | Settings API module | ✅ Done | `GET/PATCH /api/v1/settings` (key/value); `SettingRepository`; PATCH is admin-only |
+| 9 | Subscriptions API module | ✅ Done | `GET /api/v1/subscriptions` (plan + status + period + monthly usage vs limits + plan catalogue) and `POST /api/v1/subscriptions/change-plan` (admin). Gateway wiring deferred to Sprint 29 |
+| 10 | Schedule ledger snapshot job | ✅ Done | `snapshots.job.ts` walks tenants→customers calling `generateSnapshot`; scheduled daily at 00:15 in the BullMQ scheduler |
+
+**Files Created:**
+- `apps/backend/src/database/migrations/20260627120000_sprint17_audit_logs.ts` — `audit_logs` table
+- `apps/backend/src/utils/money.ts` — canonical paise money helpers + convention
+- `apps/backend/src/repositories/auditLog.repo.ts` — append-only audit writer
+- `apps/backend/src/repositories/usage.repo.ts` — monthly usage metering
+- `apps/backend/src/repositories/setting.repo.ts` — tenant key/value config
+- `apps/backend/src/repositories/subscription.repo.ts` — subscriptions + plans access
+- `apps/backend/src/middleware/audit.middleware.ts` — request auditing
+- `apps/backend/src/middleware/featureGate.middleware.ts` — SaaS plan/quota gate
+- `apps/backend/src/modules/settings/*` — settings 4-file module
+- `apps/backend/src/modules/subscriptions/*` — subscriptions 4-file module
+- `apps/backend/src/jobs/snapshots.job.ts` — daily ledger snapshot job
+
+**Files Modified:**
+- `apps/backend/src/jobs/scheduler.ts` — usage reset fix + ledger-snapshot schedule
+- `apps/backend/src/modules/analytics/analytics.routes.ts` — drop `'owner'` role
+- `apps/backend/src/modules/offers/offers.service.ts` — transaction-aware + whole-paise discounts
+- `apps/backend/src/repositories/offer.repo.ts` — `incrementUsedCount(amount)`
+- `apps/backend/src/modules/invoices/invoices.service.ts` — offer application + usage metering + paise math
+- `apps/backend/src/modules/invoices/invoices.routes.ts` — `featureGate('max_invoices_per_month')`
+- `apps/backend/src/app.ts` — mount audit middleware + settings/subscriptions routes
+- `packages/shared/types.ts` — add `Subscription` interface
 
 ### Sprint 18: Double-Entry General Ledger
 **Status:** ⬜ Not Started
@@ -397,6 +434,6 @@
 | Phase 2: Core ERP | 3–10 | ✅ Complete |
 | Phase 3: System Features | 11–14 | ✅ Complete |
 | Phase 4: Performance & Production | 15–16 | ✅ Complete |
-| Phase 4.5: Premium ERP Backend | 17–29 | ⬜ Not Started |
+| Phase 4.5: Premium ERP Backend | 17–29 | 🔄 In Progress (Sprint 17) |
 | Phase 4.6: Offline Resilience & Drafts | 30–32 | ⬜ Not Started |
 | Phase 5: Frontend | 33–41 | ⬜ Not Started |

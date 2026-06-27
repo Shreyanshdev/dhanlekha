@@ -36,6 +36,17 @@ export interface Plan {
   updated_at: string;
 }
 
+export interface Subscription {
+  id: string;
+  tenant_id: string;
+  plan_id: string;
+  status: 'active' | 'past_due' | 'canceled';
+  current_period_start: string;
+  current_period_end: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Users & Auth ───
 
 export interface User {

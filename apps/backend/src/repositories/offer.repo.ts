@@ -51,10 +51,10 @@ export class OfferRepository extends BaseRepository<Offer> {
   /**
    * Increment the used_count atomically.
    */
-  async incrementUsedCount(offerId: string): Promise<void> {
+  async incrementUsedCount(offerId: string, amount = 1): Promise<void> {
     await this.getQuery()
       .where({ id: offerId })
-      .increment('used_count', 1);
+      .increment('used_count', amount);
   }
 
   /**

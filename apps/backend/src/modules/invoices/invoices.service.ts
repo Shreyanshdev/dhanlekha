@@ -3,10 +3,17 @@ import { InvoiceRepository } from '../../repositories/invoice.repo';
 import { ProductRepository } from '../../repositories/product.repo';
 import { InventoryRepository, InventoryLogRepository } from '../../repositories/inventory.repo';
 import { CustomerRepository } from '../../repositories/customer.repo';
+import { OfferRepository } from '../../repositories/offer.repo';
+import { UsageRepository } from '../../repositories/usage.repo';
+import { findBestOfferForItem } from '../offers/offers.service';
 import { withTransaction } from '../../database/transaction';
 import { NotFoundError, BadRequestError } from '../../utils/errors';
+import { lineAmount, percentageOf, roundPaise } from '../../utils/money';
 import type { CreateInvoiceInput } from './invoices.validator';
 import type { Invoice, InvoiceItem, Product, Inventory } from '@dhanlekha/shared';
+
+/** Feature flag key used to meter monthly invoice quota. */
+const INVOICE_QUOTA_FEATURE = 'max_invoices_per_month';
 
 /**
  * Atomic Invoice Creation Flow (Sprint 5 + Sprint 6)
@@ -41,14 +48,9 @@ export async function createInvoice(
     const productMap = new Map<string, Product>(products.map(p => [p.id, p]));
     const inventoryMap = new Map<string, Inventory>(inventories.map(i => [i.product_id, i]));
 
-    // 3. Recalculate Totals (Never trust frontend)
-    let subtotal = 0;
-    let totalTax = 0;
-    let totalDiscount = 0;
-
-    const itemsToCreate: Partial<InvoiceItem>[] = [];
-
-    for (const item of data.items) {
+    // 3a. Resolve each line (price, tax, stock) and compute the gross subtotal
+    //     first — needed so invoice-level / min-purchase offers see the full cart.
+    const resolved = data.items.map(item => {
       const product = productMap.get(item.product_id);
       const inventory = inventoryMap.get(item.product_id);
 
@@ -70,23 +72,62 @@ export async function createInvoice(
         );
       }
 
-      // Calculate item values
-      const itemSubtotal = unitPrice * item.quantity;
-      const itemTaxableAmount = itemSubtotal - item.discount_amount;
-      const itemTax = (itemTaxableAmount * gstRate) / 100;
+      // All money is integer paise — round the line subtotal to whole paise.
+      return { item, product, unitPrice, gstRate, itemSubtotal: lineAmount(unitPrice, item.quantity) };
+    });
+
+    const grossSubtotal = resolved.reduce((sum, r) => sum + r.itemSubtotal, 0);
+
+    // 3b. Recalculate totals, auto-applying the best offer per line (Sprint 10/17).
+    let subtotal = 0;
+    let totalTax = 0;
+    let totalDiscount = 0;
+
+    const itemsToCreate: Partial<InvoiceItem>[] = [];
+    const offerUsage = new Map<string, number>(); // offer_id → times applied
+
+    for (const r of resolved) {
+      const manualDiscount = r.item.discount_amount;
+
+      // Auto-apply the best active offer only when it beats the manual discount.
+      const best = await findBestOfferForItem(
+        tenantId,
+        branchId,
+        r.item.product_id,
+        r.product.category ?? null,
+        r.unitPrice,
+        r.item.quantity,
+        grossSubtotal,
+        trx
+      );
+
+      let effectiveDiscount = manualDiscount;
+      let offerId: string | null = null;
+      if (best && best.discountAmount > manualDiscount) {
+        effectiveDiscount = best.discountAmount;
+        offerId = best.offer.id;
+        offerUsage.set(offerId, (offerUsage.get(offerId) ?? 0) + 1);
+      }
+
+      // Never let a discount exceed the line subtotal (whole paise).
+      effectiveDiscount = Math.min(roundPaise(effectiveDiscount), r.itemSubtotal);
+
+      const itemTaxableAmount = r.itemSubtotal - effectiveDiscount;
+      const itemTax = percentageOf(itemTaxableAmount, r.gstRate);
       const itemTotal = itemTaxableAmount + itemTax;
 
-      subtotal += itemSubtotal;
+      subtotal += r.itemSubtotal;
       totalTax += itemTax;
-      totalDiscount += item.discount_amount;
+      totalDiscount += effectiveDiscount;
 
       itemsToCreate.push({
         id: uuidv4(),
-        product_id: item.product_id,
-        quantity: item.quantity,
-        unit_price: unitPrice,
-        gst_rate: gstRate,
-        discount_amount: item.discount_amount,
+        product_id: r.item.product_id,
+        quantity: r.item.quantity,
+        unit_price: r.unitPrice,
+        gst_rate: r.gstRate,
+        discount_amount: effectiveDiscount,
+        offer_id: offerId,
         total: itemTotal,
       });
     }
@@ -124,6 +165,17 @@ export async function createInvoice(
       invoice_id: invoiceId,
     }));
     await invoiceRepo.createItems(itemsWithInvoiceId);
+
+    // 5a. Increment used_count for every offer applied on this invoice.
+    if (offerUsage.size > 0) {
+      const offerRepo = new OfferRepository(tenantId, trx);
+      for (const [offerId, times] of offerUsage) {
+        await offerRepo.incrementUsedCount(offerId, times);
+      }
+    }
+
+    // 5b. Meter monthly invoice usage for SaaS plan quota enforcement.
+    await new UsageRepository(tenantId, trx).increment(INVOICE_QUOTA_FEATURE);
 
     // 6. Update Inventory & Log Movements
     for (const item of data.items) {

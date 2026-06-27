@@ -4,6 +4,23 @@ Welcome to the backend of the **DhanLekha ERP System**. This guide explains the 
 
 ---
 
+## 📖 API Documentation (Swagger / OpenAPI)
+
+The full REST API is documented with an OpenAPI 3.0 specification, served live by the running backend:
+
+- **Swagger UI:** `GET /api/v1/docs` — interactive explorer (try-it-out enabled).
+- **Raw spec:** `GET /api/v1/docs.json` — the OpenAPI 3.0 document (import into Postman/Insomnia/codegen).
+
+The spec is hand-authored in `src/config/openapi.ts` and kept in lock-step with the Express
+routes and Zod validators. It covers every endpoint (54 paths across 20 tags) with bearer-JWT
+security, request/response schemas, path/query params, and plan/role notes. **All monetary
+fields are integer paise** (₹1 = 100 paise) per the Sprint 17 money decision.
+
+Authenticate via `POST /api/v1/auth/login`, then click **Authorize** in Swagger UI and paste the
+returned JWT to exercise protected endpoints.
+
+---
+
 ## 🏗️ The 4-File Module Pattern
 
 Every feature in the backend (e.g., `users`, `products`, `invoices`) lives inside `src/modules/{feature}/` and follows a strict **4-file pattern**. 
@@ -240,4 +257,89 @@ The Billing Engine is the most critical part of the system. It uses a **10-step 
 8. **Balance Sync**: Updates `customers.total_due` (denormalized balance).
 9. **Credit Check**: Blocks sale if customer exceeds their `credit_limit`.
 10. **Commit**: Finalizes the transaction or rolls back everything on error.
+
+---
+
+## 🏛️ Accounting Foundations & Platform Hardening (Sprint 17)
+
+Sprint 17 begins **Phase 4.5 (Premium ERP Backend)** by tightening the platform foundations
+that accounting, GST, and reporting will build on. Progress is tracked in `docs/progress.md`.
+
+### Audit Logging
+
+Every state-changing request (`POST`/`PUT`/`PATCH`/`DELETE`) is recorded in the `audit_logs`
+table by the `auditLog` middleware (`src/middleware/audit.middleware.ts`). It runs on the
+response `finish` event, so it **never blocks or fails a request**:
+
+- Skips read-only methods, unauthenticated requests, and error responses (`>= 400`).
+- Derives the `entity` from the URL (`/api/v1/invoices/:id` → `invoices`) and captures
+  `entity_id`, HTTP method, status code, and IP.
+- Stores a secret-free body summary in `metadata` (keys like `password`/`token`/`pin` are redacted).
+
+Writes go through `AuditLogRepository` (append-only; not soft-deletable).
+
+### SaaS Quota Enforcement (`featureGate`)
+
+`src/middleware/featureGate.middleware.ts` enforces plan limits at the route boundary:
+
+```typescript
+router.post('/', requireAuth, featureGate('max_invoices_per_month'), validate(schema), controller.createInvoice);
+```
+
+Resolution order mirrors the AI gate: **`tenant_overrides` first, then `plan_features`**.
+- `boolean` features → blocked when disabled.
+- `limit` features → blocked when the current month's usage reaches `limit_value`.
+
+Monthly consumption is metered by `UsageRepository`, which upserts a row keyed by
+`(tenant_id, feature_id, month_year)`. The invoice service increments
+`max_invoices_per_month` **inside the billing transaction**, so usage and the invoice commit
+atomically together. A new month naturally starts at `0` (no row yet); the monthly
+`usage-reset` job simply prunes prior-month rows.
+
+### Offers Wired Into Billing
+
+The billing engine now auto-applies promotions. For each line it calls
+`findBestOfferForItem(...)` (transaction-aware) using the **gross cart subtotal** so
+min-purchase offers evaluate correctly. An offer is only applied when its discount **beats the
+manually-entered discount**; when applied it stamps `invoice_items.offer_id` and increments
+`offers.used_count` within the same transaction. Discounts are clamped to the line subtotal.
+
+### Money Representation — Canonical Unit
+
+The Sprint 17 money audit settled the storage unit: **all money is integer paise**
+(₹1 = 100 paise). This already matched most of the schema (products, payments, plans, ledger
+snapshots) and the `packages/shared` type comments. `src/utils/money.ts` encodes the rules:
+
+- `roundPaise(x)` — collapse any fractional paise to a whole paise.
+- `percentageOf(basePaise, rate)` — GST/percentage math, rounded to whole paise.
+- `lineAmount(unitPricePaise, qty)` — quantity math, rounded to whole paise.
+- `toRupees` / `toPaise` — presentation/input boundary conversions only.
+
+The billing engine and offer engine now compute exclusively in whole paise (this also fixed a
+prior bug where percentage offers rounded to *sub-paise* via `Math.round(x * 100) / 100`).
+A non-destructive migration can later tighten the few DECIMAL-typed money columns to INTEGER;
+they already store paise-valued numbers, so no value changes.
+
+### Configuration & Subscription APIs
+
+- **`GET /api/v1/settings`** / **`PATCH /api/v1/settings`** — tenant key/value config
+  (`SettingRepository`). Any authenticated user can read (e.g. invoice prefix during billing);
+  only admins can write.
+- **`GET /api/v1/subscriptions`** — current plan, status, billing period, this month's metered
+  usage vs limits, and the plan catalogue.
+- **`POST /api/v1/subscriptions/change-plan`** (admin) — upgrade/downgrade: updates
+  `tenants.plan_id` and the `subscriptions` record atomically. Payment-gateway wiring is
+  deferred to Sprint 29.
+
+> Note: `settings` and `subscriptions` have no `is_deleted` column, so their repositories are
+> plain tenant-scoped classes rather than `BaseRepository` subclasses.
+
+### Tech-Debt Cleanup
+
+- **Scheduler / usage tracking:** fixed a column mismatch — the reset job queried `period`,
+  but the table uses `month_year`. It now prunes stale prior-month rows.
+- **Dead role removed:** analytics routes referenced a non-existent `'owner'` role; the system
+  only issues `admin`/`cashier`.
+- **Ledger snapshot job:** the previously orphaned `generateSnapshot()` is now driven by a daily
+  (00:15) BullMQ job (`jobs/snapshots.job.ts`) that walks every tenant's customers.
 
