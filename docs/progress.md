@@ -4,10 +4,13 @@
 
 ---
 
-## Current Sprint: Sprint 16 — Production Readiness
-**Status:** ✅ Complete
-**Started:** 2026-05-09
-**Completed:** 2026-05-09
+## Current Sprint: Sprint 17 — Accounting Foundations & Tech-Debt Cleanup
+**Status:** ⬜ Not Started
+**Phase:** 4.5 — Premium ERP Backend (Sprints 17–29)
+
+> Backend Sprints 0–16 are complete. Phase 4.5 (Sprints 17–29) adds the premium ERP layer
+> (accounting, GST, orders, CRM, platform) and Phase 4.6 (Sprints 30–32) adds offline resilience,
+> drafts/chit, bulk onboarding, and licensing — before frontend work. Frontend is now Phase 5, Sprints 33–41.
 
 ---
 
@@ -277,16 +280,111 @@
 | 7 | Docker production config | ✅ Done | Multi-stage build, non-root user, HEALTHCHECK |
 | 8 | E2E test suite | ✅ Done | 3 workflows + security validation |
 
-### Sprint 17: Frontend Setup & Axios Integration
+## Phase 4.5 — Premium ERP Backend (Sprints 17–29)
+
+> Elevates the backend from billing/POS to a premium ERP + CRM platform. Backend-first, before frontend.
+
+### Sprint 17: Accounting Foundations & Tech-Debt Cleanup
+**Status:** ⬜ Not Started
+**Goal:** Money-unit standardisation, audit logging, settings/subscriptions APIs, wire offers into billing, enforce plan quotas, fix usage_tracking + scheduler, schedule ledger snapshot job.
+
+### Sprint 18: Double-Entry General Ledger
+**Status:** ⬜ Not Started
+**Goal:** chart_of_accounts, journal_entries, journal_lines; default CoA seed; postJournal service; hook invoice/payment/purchase/expense postings.
+
+### Sprint 19: Accounts Payable & Supplier Payments
+**Status:** ⬜ Not Started
+**Goal:** supplier_ledger, supplier_payments + allocations; purchases post AP entries; outstanding payable per supplier.
+
+### Sprint 20: Financial Statements & Reporting
+**Status:** ⬜ Not Started
+**Goal:** Trial Balance, P&L, Balance Sheet, Cash Flow, Day Book; financial_years + opening_balances; year-end close.
+
+### Sprint 21: GST Compliance & e-Invoicing
+**Status:** ⬜ Not Started
+**Goal:** CGST/SGST/IGST split + place_of_supply; HSN summary; GSTR-1/3B; e-invoice (IRN/QR) + e-way bill via GSP adapter.
+
+### Sprint 22: Credit / Debit Notes & Returns
+**Status:** ⬜ Not Started
+**Goal:** credit_notes/debit_notes + items; sales/purchase return workflows with stock + GST + GL reversal.
+
+### Sprint 23: Bank & Cash Management
+**Status:** ⬜ Not Started
+**Goal:** bank_accounts, cash_registers, bank_transactions; account-linked payments/expenses; reconciliation; cash book.
+
+### Sprint 24: Sales & Purchase Order Management
+**Status:** ⬜ Not Started
+**Goal:** quotations, sales_orders, purchase_orders, goods_receipts, delivery_challans with conversion flows.
+
+### Sprint 25: Advanced Inventory & Valuation
+**Status:** ⬜ Not Started
+**Goal:** stock_transfers, price_lists, units/uom_conversions, product_serials; FEFO wiring; FIFO/WAC valuation; reorder/auto-PO.
+
+### Sprint 26: CRM Core — Leads & Pipeline
+**Status:** ⬜ Not Started
+**Goal:** leads, opportunities, pipeline_stages, activities; lead→opportunity→customer conversion.
+
+### Sprint 27: Customer Engagement & Communication
+**Status:** ⬜ Not Started
+**Goal:** segments, campaigns, message_templates, communication_logs, loyalty; email/SMS/WhatsApp providers.
+
+### Sprint 28: RBAC & Auth Hardening
+**Status:** ⬜ Not Started
+**Goal:** roles/permissions/role_permissions; refresh tokens, logout, password reset, 2FA; permission-matrix middleware.
+
+### Sprint 29: Platform, Integrations & Observability
+**Status:** ⬜ Not Started
+**Goal:** API keys, webhooks, OpenAPI docs, subscription billing gateway, file storage, PDF/Excel export, sync apply worker, tests + observability.
+
+---
+
+## Phase 4.6 — Offline Resilience, Drafts & Onboarding (Sprints 30–32)
+
+> Hardens real retail-floor and offline operation. Backend-first; matching client work lands in Phase 5.
+
+### Sprint 30: Draft "Chit" Invoices & Soft Reserve
+**Status:** ⬜ Not Started
+**Goal:** Draft invoices without GST sequence; daily token_number; soft-reserve stock (`reserved` logs); atomic finalize to formal invoice + ledger.
+
+### Sprint 31: Bulk Onboarding Import & Additive Inventory Sync
+**Status:** ⬜ Not Started
+**Goal:** CSV import for products/customers (transactional, full rollback on bad row); additive (delta-based) inventory conflict resolution in the sync worker.
+
+### Sprint 32: Offline Security & Licensing
+**Status:** ⬜ Not Started
+**Goal:** Signed-JWT offline license + monotonic clock guard; offline PIN hashing; LICENSE_EXPIRED / QUOTA_EXCEEDED / SECURITY_LOCKDOWN enforcement before offline writes.
+
+---
+
+## Phase 5 — Frontend (Sprints 33–41)
+
+### Sprint 33: Foundation & Auth Shell
+**Status:** ⬜ Not Started
+**Goal:** Next.js + auth shell + Electron; SQLite IPC bridge, offline PIN login, ESC/POS raw printing bridge.
+
+### Sprint 34: Dashboard & Analytics
 **Status:** ⬜ Not Started
 
-### Sprint 18: Core UI — Billing & Inventory
+### Sprint 35: Product Management & Inventory
 **Status:** ⬜ Not Started
 
-### Sprint 19: Financial UI — Payments, Ledger, Reports
+### Sprint 36: Billing Engine UI (Critical)
+**Status:** ⬜ Not Started
+**Goal:** Billing screen; AI suggestion fallback (circuit breaker → local SQLite), draft/chit mode, raw print + cash drawer.
+
+### Sprint 37: Customers, Ledger & Payments
 **Status:** ⬜ Not Started
 
-### Sprint 20: Offline, Sync & Polish
+### Sprint 38: Suppliers, Purchases & Expenses
+**Status:** ⬜ Not Started
+
+### Sprint 39: Offers, Alerts, Staff & Settings
+**Status:** ⬜ Not Started
+
+### Sprint 40: Sync, Offline & Invoice History
+**Status:** ⬜ Not Started
+
+### Sprint 41: Product Landing Page
 **Status:** ⬜ Not Started
 
 ---
@@ -299,4 +397,6 @@
 | Phase 2: Core ERP | 3–10 | ✅ Complete |
 | Phase 3: System Features | 11–14 | ✅ Complete |
 | Phase 4: Performance & Production | 15–16 | ✅ Complete |
-| Phase 5: Frontend | 17–20 | ⬜ Not Started |
+| Phase 4.5: Premium ERP Backend | 17–29 | ⬜ Not Started |
+| Phase 4.6: Offline Resilience & Drafts | 30–32 | ⬜ Not Started |
+| Phase 5: Frontend | 33–41 | ⬜ Not Started |

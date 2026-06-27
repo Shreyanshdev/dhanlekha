@@ -11,18 +11,20 @@ DhanLekha (धनलेखा — "wealth ledger") is a multi-tenant, offline-fi
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js + React + TypeScript |
-| Desktop | Electron |
+| Desktop | Electron (wraps Next.js for offline desktop) |
 | Backend | Node.js + Express.js + TypeScript |
 | AI Service | Python + FastAPI |
-| Local DB | SQLite (offline-first) |
+| Local DB | SQLite (offline-first, edge storage) |
 | Cloud DB | PostgreSQL |
 | Cache | Redis |
 | Queue | BullMQ |
+| Logging | Pino (structured JSON in prod, pretty in dev) |
 | HTTP Client | Axios |
 | Monorepo | Turborepo |
 | Container | Docker + Docker Compose |
 | Auth | JWT + bcrypt |
 | Validation | Zod |
+| Security | Helmet.js + Rate Limiting + Input Sanitisation |
 
 ---
 
@@ -42,14 +44,18 @@ dhanlekha/
 │   │       │   ├── env.ts          # Environment variables
 │   │       │   ├── database.ts     # Knex DB connection
 │   │       │   ├── knexfile.ts     # Knex config (SQLite + PostgreSQL)
-│   │       │   └── redis.ts        # Redis client (graceful failure)
+│   │       │   ├── redis.ts        # Redis client (typed, graceful failure)
+│   │       │   ├── logger.ts       # (Sprint 16) Pino structured logger
+│   │       │   └── aiClient.ts     # (Sprint 14) AI service HTTP client
 │   │       ├── middleware/
 │   │       │   ├── auth.middleware.ts           # JWT authentication
 │   │       │   ├── authorize.middleware.ts      # Role-based access (admin/cashier)
-│   │       │   ├── errorHandler.middleware.ts   # Global error handler
-│   │       │   ├── requestLogger.middleware.ts  # Request logging
-│   │       │   └── validate.middleware.ts       # Zod validation factory
-│   │       ├── modules/
+│   │       │   ├── errorHandler.middleware.ts   # Global error handler (Pino)
+│   │       │   ├── requestLogger.middleware.ts  # Structured request logging (Pino)
+│   │       │   ├── validate.middleware.ts       # Zod validation factory
+│   │       │   ├── rateLimit.middleware.ts      # (Sprint 16) 3-tier rate limiting
+│   │       │   └── sanitise.middleware.ts       # (Sprint 16) XSS/prototype pollution guard
+│   │       ├── modules/                         # Each module = routes + validator + controller + service
 │   │       │   ├── auth/           # Login & Registration
 │   │       │   ├── users/          # Staff management
 │   │       │   ├── branches/       # Multi-location management
@@ -67,16 +73,16 @@ dhanlekha/
 │   │       │   ├── analytics/      # (Sprint 13) Business Intelligence & Reporting
 │   │       │   ├── ai/             # (Sprint 14) AI Integration (parse, voice, suggest, demand, enrich)
 │   │       │   ├── tenants/        # SaaS Tenant management
-│   │       │   └── health/         # System status
+│   │       │   └── health/         # Liveness + readiness probes
 │   │       ├── repositories/
-│   │       │   ├── base.repo.ts          # Generic multi-tenant base
-│   │       │   ├── branch.repo.ts        # Branch-scoped queries
+│   │       │   ├── base.repo.ts          # Generic multi-tenant base (auto tenant_id scoping)
+│   │       │   ├── branch.repo.ts        # Branch-scoped queries (tenant + branch isolation)
 │   │       │   ├── customer.repo.ts      # Customer profiles & balances
 │   │       │   ├── expense.repo.ts       # Operating costs
 │   │       │   ├── inventory.repo.ts     # Branch inventory logs
-│   │       │   ├── invoice.repo.ts       # Invoices & line items
+│   │       │   ├── invoice.repo.ts       # Invoices & line items (consolidated domain)
 │   │       │   ├── payment.repo.ts       # Payments & allocations
-│   │       │   ├── product.repo.ts       # Product catalog & barcodes
+│   │       │   ├── product.repo.ts       # Product catalog & barcodes (Redis cached)
 │   │       │   ├── offer.repo.ts         # Promotions & discounts
 │   │       │   ├── sync.repo.ts          # Offline sync queue & devices
 │   │       │   ├── alert.repo.ts         # System alerts
@@ -87,19 +93,21 @@ dhanlekha/
 │   │       │   ├── tenant.repo.ts        # Global tenant profiles
 │   │       │   └── user.repo.ts          # Staff accounts
 │   │       ├── database/
-│   │       │   ├── transaction.ts        # Atomic transaction helper
-│   │       │   ├── migrations/           # Knex migrations (Sprints 1-15)
+│   │       │   ├── transaction.ts        # Atomic transaction helper (withTransaction)
+│   │       │   ├── migrations/           # Knex migrations (Sprints 1-16)
 │   │       │   └── seeds/                # Seed data (plans, default admins)
 │   │       ├── services/
-│   │       │   └── cache.service.ts     # (Sprint 15) Redis cache with getOrSet pattern
+│   │       │   └── cache.service.ts     # (Sprint 15) Redis cache — getOrSet, delPattern
 │   │       ├── jobs/
 │   │       │   ├── scheduler.ts         # (Sprint 15) BullMQ recurring job manager
 │   │       │   ├── metrics.job.ts       # Daily metrics aggregation
-│   │       │   └── alerts.job.ts        # Alert generation (low stock, due payments)
+│   │       │   ├── alerts.job.ts        # Alert generation (low stock, due payments)
+│   │       │   ├── runAlerts.ts         # CLI runner for alert job
+│   │       │   └── runMetrics.ts        # CLI runner for metrics job
 │   │       └── utils/
 │   │           ├── errors.ts             # Custom HTTP error classes
 │   │           └── response.ts           # Standard API response helpers
-│   ├── frontend/                   # Next.js + Electron (Sprint 17+)
+│   ├── frontend/                   # Next.js + Electron (Sprint 33+)
 │   │   └── package.json
 │   └── ai-service/                 # Python FastAPI (Sprint 14)
 │       ├── package.json            # Monorepo workspace config (npm run dev:ai)
@@ -121,18 +129,12 @@ dhanlekha/
 │       ├── types.ts                # Universal TS interfaces (Invoice, Payment, etc)
 │       ├── tsconfig.json
 │       └── package.json
-├── api-testing/                    # Post-sprint API test suites
-│   ├── sprint7_test.js             # Payments verification
-│   ├── sprint8_test.js             # Ledger integrity verification
-│   ├── sprint9_test.js             # Purchases & Expenses basic
-│   ├── sprint9_deep_test.js        # Auth & Reliability deep-dive
-│   ├── sprint10_test.js            # Offers CRUD & validation
-│   └── test_all_apis.js            # Full integration smoke test
 ├── docs/
-│   ├── srs.md                      # Requirement specs
-│   ├── db.md                       # Data modeling
-│   ├── progress.md                 # Sprint tracking
-│   └── sprint.md                   # Execution plan
+│   ├── srs.md                      # Software Requirement Specification
+│   ├── db.md                       # Database schema, ERD, indexes (47KB)
+│   ├── techstack.md                # Technology stack decisions
+│   ├── progress.md                 # Sprint tracking (Sprints 0–41)
+│   └── sprint.md                   # Execution plan (7 phases, Sprints 0–41)
 ├── .agents/skills/                 # AI agent skill definitions (api, backend, etc)
 ├── docker-compose.yml              # Dev infra (PG, Redis)
 ├── turbo.json                      # Build system config
@@ -192,14 +194,27 @@ Expected response:
   "success": true,
   "data": {
     "status": "ok",
-    "timestamp": "2026-05-01T10:15:19.221Z",
-    "uptime": 15.69,
+    "version": "1.0.0",
+    "timestamp": "2026-05-09T15:22:33.000Z",
+    "startedAt": "2026-05-09T15:22:30.000Z",
+    "uptime": 3,
+    "environment": "development",
     "services": {
       "database": { "status": "connected" },
       "redis": { "status": "connected" }
+    },
+    "memory": {
+      "rss": "38MB",
+      "heap_used": "22MB",
+      "heap_total": "30MB"
     }
   }
 }
+```
+
+Readiness probe (for Docker/K8s routing):
+```bash
+curl http://localhost:3001/api/v1/health/ready
 ```
 
 ---
@@ -234,26 +249,30 @@ AI Service (Python FastAPI) — optional
 |-------|---------|-------|--------|
 | Phase 1 | 0–2 | Backend infrastructure, auth, SaaS | ✅ Complete |
 | Phase 2 | 3–10 | Core ERP backend APIs | ✅ Complete |
-| Phase 3 | 11–14 | System features (sync, alerts, AI) | 🔄 In Progress |
-| Phase 4 | 15–16 | Performance & production readiness | ⬜ Not Started |
-| Phase 5 | 17–20 | Frontend (after backend is complete) | ⬜ Not Started |
+| Phase 3 | 11–14 | System features (sync, alerts, AI) | ✅ Complete |
+| Phase 4 | 15–16 | Performance & production readiness | ✅ Complete |
+| Phase 4.5 | 17–29 | Premium ERP backend (accounting, GST, orders, CRM, platform) | ⬜ Planned |
+| Phase 4.6 | 30–32 | Offline resilience, drafts/chit, bulk onboarding, licensing | ⬜ Planned |
+| Phase 5 | 33–41 | Frontend (Next.js + Electron) | ⬜ Planned |
 
-> **Backend-first development** — all 16 backend sprints must complete before any frontend work begins.
+> **Core backend (Sprints 0–16) is complete.** Phase 4.5 (Sprints 17–29) extends the backend to premium ERP/CRM parity — true double-entry accounting, GST compliance, order management, advanced inventory, CRM, and platform services — and Phase 4.6 (Sprints 30–32) adds offline resilience (draft chits, soft reserve, bulk onboarding, signed-license enforcement) before frontend work (Phase 5, Sprints 33–41) begins.
 
 See [docs/sprint.md](docs/sprint.md) for the full execution plan and [docs/progress.md](docs/progress.md) for current status.
 
 ---
 
-## Key Features (Planned)
+## Key Features
 
-- 🧾 **Billing & Invoicing** — GST-compliant, barcode scanning, discount engine
-- 📦 **Inventory Management** — Stock tracking, batch support (FEFO), audit logs
+- 🧾 **Billing & Invoicing** — GST-compliant, sub-10ms barcode scanning, discount engine, atomic stock+ledger sync
+- 📦 **Inventory Management** — Stock tracking, batch support (FEFO), audit logs, low-stock alerts
 - 💰 **Payment System** — Multi-invoice allocation, advance payments, UPI/cash/card
-- 📒 **Ledger (Udhaar)** — Append-only double-entry, running balance, daily snapshots
-- 🏪 **Multi-Tenant SaaS** — Plan-based feature gating, usage quotas
-- 📴 **Offline-First** — SQLite local DB, sync queue, conflict resolution
-- 🤖 **AI Features** — Product parsing, demand prediction, smart suggestions
-- 📊 **Analytics** — Daily metrics, sales reports, profit calculation
+- 📒 **Ledger (Udhaar)** — Append-only double-entry, running balance, credit limit enforcement
+- 🏪 **Multi-Tenant SaaS** — Plan-based feature gating (Starter/Growth/Enterprise), usage quotas
+- 📴 **Offline-First** — SQLite local DB, sync queue, conflict resolution, device registration
+- 🤖 **AI Features** — Product parsing, demand prediction, smart suggestions, voice billing
+- 📊 **Analytics** — Dashboard metrics (cached), daily snapshots, P&L calculation
+- 🔒 **Security** — Helmet.js headers, 3-tier rate limiting, XSS/prototype pollution sanitisation
+- ⚡ **Performance** — 35+ DB indexes, Redis caching, BullMQ background jobs, Pino structured logging
 
 ---
 
@@ -264,7 +283,8 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 ### 🏥 System
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/health` | Service health status & connectivity |
+| GET | `/api/v1/health` | Liveness probe — version, memory, services, uptime |
+| GET | `/api/v1/health/ready` | Readiness probe — DB connectivity check for K8s/Docker |
 
 ### 🔐 Authentication & Identity
 | Method | Endpoint | Description |
@@ -381,14 +401,34 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `NODE_ENV` | `development` | Environment mode |
-| `BACKEND_PORT` | `3001` | Backend server port |
+| `NODE_ENV` | `development` | Environment mode (`development` / `production`) |
+| `PORT` | `3001` | Backend server port |
+| `DATABASE_CLIENT` | `sqlite3` | Database driver (`sqlite3` or `pg`) |
+| `SQLITE_PATH` | `./data/dhanlekha.sqlite` | SQLite file path (local/offline mode) |
+| `POSTGRES_HOST` | `localhost` | PostgreSQL host |
+| `POSTGRES_PORT` | `5432` | PostgreSQL port |
 | `POSTGRES_DB` | `dhanlekha` | PostgreSQL database name |
 | `POSTGRES_USER` | `dhanlekha` | PostgreSQL username |
 | `POSTGRES_PASSWORD` | `dhanlekha_secret` | PostgreSQL password |
+| `REDIS_HOST` | `localhost` | Redis host |
 | `REDIS_PORT` | `6379` | Redis port |
-| `JWT_SECRET` | (dev default) | JWT signing secret |
+| `JWT_SECRET` | (dev default) | JWT signing secret (**change in production**) |
 | `JWT_EXPIRES_IN` | `7d` | JWT token expiry |
+| `AI_SERVICE_URL` | `http://localhost:8000` | Python AI service base URL |
+| `AI_TIMEOUT` | `5000` | AI service request timeout (ms) |
+
+---
+
+## Performance Benchmarks (Sprint 15)
+
+Verified against SRS targets with `node api-testing/sprint15_test.js`:
+
+| Operation | SRS Target | Actual |
+|-----------|-----------|--------|
+| Barcode lookup | < 50ms | **1.0ms** |
+| Product search | < 200ms | **0.8ms** |
+| Invoice creation | < 1,000ms | **7.1ms** |
+| Sustained (10 invoices) | < 1,000ms avg | **2.6ms** |
 
 ---
 
