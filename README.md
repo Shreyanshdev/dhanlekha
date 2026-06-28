@@ -80,9 +80,12 @@ dhanlekha/
 │   │       │   ├── accounts/       # (Sprint 18) Chart of accounts & account ledgers
 │   │       │   ├── journals/       # (Sprint 18) Double-entry journal entries
 │   │       │   ├── supplier-payments/ # (Sprint 19) Supplier payouts & purchase allocations
+│   │       │   ├── reports/          # (Sprint 20) Financial statements from GL
+│   │       │   ├── financial-years/  # (Sprint 20) Accounting periods & year-end close
 │   │       │   ├── tenants/        # SaaS Tenant management
 │   │       │   └── health/         # Liveness + readiness probes
 │   │       ├── accounting/         # (Sprint 18) CoA seed + postJournal GL service
+│   │       │   └── reports.service.ts # (Sprint 20) TB, P&L, BS, cash flow, day book
 │   │       ├── repositories/
 │   │       │   ├── base.repo.ts          # Generic multi-tenant base (auto tenant_id scoping)
 │   │       │   ├── branch.repo.ts        # Branch-scoped queries (tenant + branch isolation)
@@ -111,7 +114,7 @@ dhanlekha/
 │   │       │   ├── transaction.ts        # Atomic transaction helper (withTransaction)
 │   │       │   ├── migrations/           # Knex migrations (Sprints 1–19+)
 │   │       │   └── seeds/                # Seed data (plans, default admins)
-│   │       ├── test/                     # (Sprint 17+) Vitest + Supertest (57 tests)
+│   │       ├── test/                     # (Sprint 17+) Vitest + Supertest (66 tests)
 │   │       ├── services/
 │   │       │   └── cache.service.ts     # (Sprint 15) Redis cache — getOrSet, delPattern
 │   │       ├── jobs/
@@ -267,7 +270,7 @@ AI Service (Python FastAPI) — optional
 | Phase 2 | 3–10 | Core ERP backend APIs | ✅ Complete |
 | Phase 3 | 11–14 | System features (sync, alerts, AI) | ✅ Complete |
 | Phase 4 | 15–16 | Performance & production readiness | ✅ Complete |
-| Phase 4.5 | 17–29 | Premium ERP backend (accounting, GST, orders, CRM, platform) | 🔄 In Progress (Sprints 17–19 ✅, Sprint 20 next) |
+| Phase 4.5 | 17–29 | Premium ERP backend (accounting, GST, orders, CRM, platform) | 🔄 In Progress (Sprints 17–20 ✅, Sprint 21 next) |
 | Phase 4.6 | 30–32 | Offline resilience, drafts/chit, bulk onboarding, licensing | ⬜ Planned |
 | Phase 5 | 33–41 | Frontend (Next.js + Electron) | ⬜ Planned |
 
@@ -285,6 +288,7 @@ See [docs/sprint.md](docs/sprint.md) for the full execution plan and [docs/progr
 - 📒 **Ledger (Udhaar)** — Append-only double-entry, running balance, credit limit enforcement
 - 🏛️ **General Ledger** — Chart of accounts, balanced journal entries, GL hooks on invoice/payment/purchase/expense (Sprint 18)
 - 💳 **Accounts Payable** — Supplier ledger, supplier payments with purchase allocation, outstanding payable tracking (Sprint 19)
+- 📑 **Financial Statements** — Trial Balance, P&L, Balance Sheet, Cash Flow, Day Book from the GL; financial years & year-end close (Sprint 20)
 - 🏪 **Multi-Tenant SaaS** — Plan-based feature gating (Starter/Growth/Enterprise), usage quotas, settings & subscription APIs (Sprint 17)
 - 📴 **Offline-First** — SQLite local DB, sync queue, conflict resolution, device registration
 - 🤖 **AI Features** — Product parsing, demand prediction, smart suggestions, voice billing
@@ -444,6 +448,18 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 | POST | `/api/v1/supplier-payments/:id/allocate` | Allocate an advance payment to purchases |
 
 > Purchases automatically write supplier-ledger entries and update `suppliers.total_payable`.
+
+### 📑 Financial Statements (Sprint 20)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/reports/trial-balance` | Trial balance for a date range or financial year *(admin)* |
+| GET | `/api/v1/reports/profit-loss` | Profit & loss statement *(admin)* |
+| GET | `/api/v1/reports/balance-sheet` | Balance sheet as of a date *(admin)* |
+| GET | `/api/v1/reports/cash-flow` | Cash/bank inflows & outflows *(admin)* |
+| GET | `/api/v1/reports/day-book` | Chronological journal entries *(admin)* |
+| GET | `/api/v1/financial-years` | List accounting periods *(admin)* |
+| POST | `/api/v1/financial-years` | Create a financial year *(admin)* |
+| POST | `/api/v1/financial-years/:id/close` | Year-end close; roll opening balances forward *(admin)* |
 
 ---
 

@@ -410,11 +410,8 @@ npm run test:watch  # watch mode
   (single fork, WAL, `busy_timeout`) to avoid SQLite lock contention.
 - **Helpers:** `test/helpers.ts` provides `registerAndLogin`, `createProduct`,
   `createPercentageOffer`, and token/utility helpers.
-- **Coverage (57 tests):** money math (`money.test.ts`), invoice money + offer auto-apply
-  (`invoices.test.ts`), monthly quota enforcement (`quota.test.ts`), settings gating
-  (`settings.test.ts`), subscriptions + change-plan (`subscriptions.test.ts`), audit-log writes
-  and secret redaction (`audit.test.ts`), the full General Ledger (`ledger.test.ts`), and
-  accounts payable / supplier payments (`supplier-payable.test.ts`).
+- **Coverage (66 tests):** money math, invoices, quotas, settings, subscriptions,
+  audit log, general ledger, supplier payables, and financial reports.
 
 ---
 
@@ -460,4 +457,31 @@ Advance payments (unallocated) can be applied later via `POST /supplier-payments
 - **`POST /api/v1/supplier-payments/:id/allocate`** — allocate an advance payment to purchases.
 
 All endpoints are documented in the OpenAPI spec (`/api/v1/docs`).
+
+---
+
+## 📑 Financial Statements & Reporting (Sprint 20)
+
+Sprint 20 produces statutory and management reports **directly from posted journal lines**, using the same normal-balance rules as the account ledger API.
+
+### Data model
+
+- **`financial_years`** — named accounting periods (`start_date`, `end_date`, `open`/`closed`).
+- **`opening_balances`** — per-account opening debit/credit (paise) at the start of a financial year.
+
+### Reports (admin)
+
+All accept `from`/`to` dates, or a `financial_year_id` (with optional date override within the FY):
+
+| Report | Endpoint | Notes |
+|--------|----------|-------|
+| Trial Balance | `GET /reports/trial-balance` | Closing debit/credit columns; `is_balanced` flag |
+| Profit & Loss | `GET /reports/profit-loss` | Income & expense accounts for the period |
+| Balance Sheet | `GET /reports/balance-sheet` | Assets = Liabilities + Equity (+ surplus) as of `as_of` |
+| Cash Flow | `GET /reports/cash-flow` | Cash + bank account movements by `reference_type` |
+| Day Book | `GET /reports/day-book` | Chronological journal entries with lines |
+
+### Year-end close
+
+`POST /api/v1/financial-years/:id/close` computes closing balances as of the year's `end_date`, marks the year **closed**, and writes **`opening_balances`** for the next financial year (auto-created or supplied via `next_year` in the request body).
 

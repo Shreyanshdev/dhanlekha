@@ -525,6 +525,33 @@ export interface JournalLine {
   created_at: string;
 }
 
+// ─── Sprint 20: Financial Statements ───
+
+export type FinancialYearStatus = 'open' | 'closed';
+
+export interface FinancialYear {
+  id: string;
+  tenant_id: string;
+  name: string;
+  start_date: string; // YYYY-MM-DD
+  end_date: string;   // YYYY-MM-DD
+  status: FinancialYearStatus;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OpeningBalance {
+  id: string;
+  tenant_id: string;
+  financial_year_id: string;
+  account_id: string;
+  debit: number;  // paise
+  credit: number; // paise
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── API Response Contracts ───
 
 export interface ApiResponse<T> {

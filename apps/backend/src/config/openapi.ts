@@ -838,6 +838,78 @@ const schemas: any = {
       },
     },
   },
+
+  // ─── Financial Statements (Sprint 20) ───
+  FinancialYear: {
+    type: 'object',
+    properties: {
+      id: uuid(),
+      name: { type: 'string' },
+      start_date: dateStr(),
+      end_date: dateStr(),
+      status: { type: 'string', enum: ['open', 'closed'] },
+      created_at: ts(),
+      updated_at: ts(),
+    },
+  },
+  CreateFinancialYearRequest: {
+    type: 'object',
+    required: ['name', 'start_date', 'end_date'],
+    properties: {
+      name: { type: 'string', example: 'FY 2025-26' },
+      start_date: dateStr(),
+      end_date: dateStr(),
+    },
+  },
+  CloseFinancialYearRequest: {
+    type: 'object',
+    properties: {
+      next_year: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          start_date: dateStr(),
+          end_date: dateStr(),
+        },
+      },
+    },
+  },
+  TrialBalanceReport: {
+    type: 'object',
+    properties: {
+      from: dateStr(),
+      to: dateStr(),
+      financial_year_id: { ...uuid(), nullable: true },
+      lines: { type: 'array', items: { type: 'object' } },
+      total_debit: money(),
+      total_credit: money(),
+      is_balanced: { type: 'boolean' },
+    },
+  },
+  ProfitLossReport: {
+    type: 'object',
+    properties: {
+      from: dateStr(),
+      to: dateStr(),
+      income: { type: 'array', items: { type: 'object' } },
+      expenses: { type: 'array', items: { type: 'object' } },
+      total_income: money(),
+      total_expenses: money(),
+      net_profit: money(),
+    },
+  },
+  BalanceSheetReport: {
+    type: 'object',
+    properties: {
+      as_of: dateStr(),
+      assets: { type: 'array', items: { type: 'object' } },
+      liabilities: { type: 'array', items: { type: 'object' } },
+      equity: { type: 'array', items: { type: 'object' } },
+      total_assets: money(),
+      total_liabilities_and_equity: money(),
+      is_balanced: { type: 'boolean' },
+    },
+  },
   PushSyncRequest: {
     type: 'object',
     required: ['device_id', 'entries'],
@@ -1235,6 +1307,55 @@ const paths: any = {
     },
     post: { tags: ['Journals'], summary: 'Post a balanced manual journal (admin)', requestBody: reqBody('CreateJournalRequest'), responses: { '201': dataResp('Posted journal entry', ref('JournalEntry')), ...errorResponses } },
   },
+
+  // ─── Financial Statements (Sprint 20) ───
+  '/reports/trial-balance': {
+    get: {
+      tags: ['Reports'], summary: 'Trial balance for a date range or financial year (admin)',
+      parameters: [query('from', dateStr()), query('to', dateStr()), query('financial_year_id', uuid())],
+      responses: { '200': dataResp('Trial balance', ref('TrialBalanceReport')), ...errorResponses },
+    },
+  },
+  '/reports/profit-loss': {
+    get: {
+      tags: ['Reports'], summary: 'Profit & loss statement (admin)',
+      parameters: [query('from', dateStr()), query('to', dateStr()), query('financial_year_id', uuid())],
+      responses: { '200': dataResp('Profit & loss', ref('ProfitLossReport')), ...errorResponses },
+    },
+  },
+  '/reports/balance-sheet': {
+    get: {
+      tags: ['Reports'], summary: 'Balance sheet as of a date (admin)',
+      parameters: [query('as_of', dateStr()), query('from', dateStr()), query('to', dateStr()), query('financial_year_id', uuid())],
+      responses: { '200': dataResp('Balance sheet', ref('BalanceSheetReport')), ...errorResponses },
+    },
+  },
+  '/reports/cash-flow': {
+    get: {
+      tags: ['Reports'], summary: 'Cash flow summary for cash/bank accounts (admin)',
+      parameters: [query('from', dateStr()), query('to', dateStr()), query('financial_year_id', uuid())],
+      responses: { '200': dataResp('Cash flow', { type: 'object' }), ...errorResponses },
+    },
+  },
+  '/reports/day-book': {
+    get: {
+      tags: ['Reports'], summary: 'Chronological journal entries for a period (admin)',
+      parameters: [query('from', dateStr()), query('to', dateStr()), query('financial_year_id', uuid())],
+      responses: { '200': dataResp('Day book', { type: 'object' }), ...errorResponses },
+    },
+  },
+  '/financial-years': {
+    get: { tags: ['Financial Years'], summary: 'List financial years (admin)', responses: { '200': dataResp('Financial years', { type: 'array', items: ref('FinancialYear') }), ...errorResponses } },
+    post: { tags: ['Financial Years'], summary: 'Create a financial year (admin)', requestBody: reqBody('CreateFinancialYearRequest'), responses: { '201': dataResp('Created financial year', ref('FinancialYear')), ...errorResponses } },
+  },
+  '/financial-years/{id}/close': {
+    post: {
+      tags: ['Financial Years'], summary: 'Close a financial year and roll opening balances forward (admin)',
+      parameters: [pathId('id', 'Financial year UUID')],
+      requestBody: reqBody('CloseFinancialYearRequest', false),
+      responses: { '200': dataResp('Year-end close result', { type: 'object' }), ...errorResponses },
+    },
+  },
 };
 
 export const openapiDocument: any = {
@@ -1272,6 +1393,8 @@ export const openapiDocument: any = {
     { name: 'Subscriptions', description: 'Plan & usage' },
     { name: 'Accounts', description: 'Chart of accounts & account ledgers (GL)' },
     { name: 'Journals', description: 'Double-entry journal entries (GL)' },
+    { name: 'Reports', description: 'Financial statements derived from the GL (admin)' },
+    { name: 'Financial Years', description: 'Accounting periods & year-end close (admin)' },
   ],
   components: {
     securitySchemes: {
