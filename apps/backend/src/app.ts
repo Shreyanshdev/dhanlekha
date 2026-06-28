@@ -35,6 +35,8 @@ import subscriptionsRoutes from './modules/subscriptions/subscriptions.routes';
 import accountsRoutes from './modules/accounts/accounts.routes';
 import journalsRoutes from './modules/journals/journals.routes';
 import supplierPaymentsRoutes from './modules/supplier-payments/supplier-payments.routes';
+import reportsRoutes from './modules/reports/reports.routes';
+import financialYearsRoutes from './modules/financial-years/financial-years.routes';
 
 const app = express();
 
@@ -96,6 +98,8 @@ app.use('/api/v1/settings', settingsRoutes);
 app.use('/api/v1/subscriptions', subscriptionsRoutes);
 app.use('/api/v1/accounts', accountsRoutes);
 app.use('/api/v1/journals', journalsRoutes);
+app.use('/api/v1/reports', reportsRoutes);
+app.use('/api/v1/financial-years', financialYearsRoutes);
 
 // ── 404 Handler ──
 app.use((_req, res) => {

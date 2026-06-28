@@ -4,15 +4,14 @@
 
 ---
 
-## Current Sprint: Sprint 20 — Financial Statements & Reporting
+## Current Sprint: Sprint 21 — GST Compliance & e-Invoicing
 **Status:** ⬜ Not Started
 **Phase:** 4.5 — Premium ERP Backend (Sprints 17–29)
-**Previous:** Sprint 19 (Accounts Payable & Supplier Payments) ✅ Complete
+**Previous:** Sprint 20 (Financial Statements & Reporting) ✅ Complete
 
-> **Sprint 19 ✅** — Full accounts-payable lifecycle: `supplier_ledger`,
-> `supplier_payments` + allocations, `suppliers.total_payable` cache, purchase
-> postings, supplier payment GL (Dr AP / Cr Cash/Bank), and supplier ledger/balance
-> APIs. **57 automated tests** now cover Sprints 17–19.
+> **Sprint 20 ✅** — Financial statements derived from the GL: Trial Balance,
+> P&L, Balance Sheet, Cash Flow, Day Book; `financial_years` + `opening_balances`;
+> year-end close with roll-forward. **66 automated tests** cover Sprints 17–20.
 
 > Backend Sprints 0–16 are complete. Phase 4.5 (Sprints 17–29) adds the premium ERP layer
 > (accounting, GST, orders, CRM, platform) and Phase 4.6 (Sprints 30–32) adds offline resilience,
@@ -357,8 +356,16 @@
 - **Tests** — `supplier-payable.test.ts` (11 tests): ledger on purchase, partial pay at purchase, supplier payments + advance allocation, validation guards, multi-purchase cumulative payable, GL postings. **57 total tests passing.**
 
 ### Sprint 20: Financial Statements & Reporting
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 **Goal:** Trial Balance, P&L, Balance Sheet, Cash Flow, Day Book; financial_years + opening_balances; year-end close.
+
+**Delivered:**
+- **Migration** `20260630120000_sprint20_financial_statements.ts` — `financial_years` (name, start/end, open/closed), `opening_balances` (per-account opening debit/credit for a FY).
+- **Reporting core** (`accounting/reports.service.ts`) — aggregates posted `journal_lines` with normal-balance rules; supports date-range or financial-year scoping without double-counting openings.
+- **Reports APIs** (admin) — `GET /reports/trial-balance`, `/profit-loss`, `/balance-sheet`, `/cash-flow`, `/day-book`.
+- **Financial years APIs** (admin) — `GET/POST /financial-years`, `POST /financial-years/:id/close` (rolls closing balances into next-year `opening_balances`).
+- **Shared types** — `FinancialYear`, `OpeningBalance`.
+- **Tests** — `financial-reports.test.ts` (9 tests): balanced TB/BS, P&L math, cash flow, day book, FY create/close/overlap guard, admin gating. **66 total tests passing.**
 
 ### Sprint 21: GST Compliance & e-Invoicing
 **Status:** ⬜ Not Started
