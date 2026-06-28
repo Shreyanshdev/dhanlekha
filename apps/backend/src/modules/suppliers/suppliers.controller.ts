@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import * as suppliersService from './suppliers.service';
-import { success, created } from '../../utils/response';
+import { success, created, paginated } from '../../utils/response';
 
 export async function listSuppliers(req: Request, res: Response, next: NextFunction) {
   try {
@@ -51,6 +51,41 @@ export async function deleteSupplier(req: Request, res: Response, next: NextFunc
     const { id } = req.params;
     await suppliersService.deleteSupplier(tenantId, id);
     return success(res, { message: 'Supplier deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getSupplierLedger(req: Request, res: Response, next: NextFunction) {
+  try {
+    const tenantId = req.user!.tenantId;
+    const { id } = req.params;
+    const page = parseInt(req.query.page as string ?? '1', 10);
+    const limit = Math.min(parseInt(req.query.limit as string ?? '20', 10), 100);
+    const filters = {
+      from: req.query.from as string | undefined,
+      to: req.query.to as string | undefined,
+      entry_type: req.query.entry_type as string | undefined,
+    };
+    const { items, total } = await suppliersService.getSupplierLedger(
+      tenantId,
+      id,
+      page,
+      limit,
+      filters
+    );
+    return paginated(res, items, { page, limit, total });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getSupplierBalance(req: Request, res: Response, next: NextFunction) {
+  try {
+    const tenantId = req.user!.tenantId;
+    const { id } = req.params;
+    const balance = await suppliersService.getSupplierBalance(tenantId, id);
+    return success(res, balance);
   } catch (error) {
     next(error);
   }

@@ -410,8 +410,54 @@ npm run test:watch  # watch mode
   (single fork, WAL, `busy_timeout`) to avoid SQLite lock contention.
 - **Helpers:** `test/helpers.ts` provides `registerAndLogin`, `createProduct`,
   `createPercentageOffer`, and token/utility helpers.
-- **Coverage (46 tests):** money math (`money.test.ts`), invoice money + offer auto-apply
+- **Coverage (57 tests):** money math (`money.test.ts`), invoice money + offer auto-apply
   (`invoices.test.ts`), monthly quota enforcement (`quota.test.ts`), settings gating
   (`settings.test.ts`), subscriptions + change-plan (`subscriptions.test.ts`), audit-log writes
-  and secret redaction (`audit.test.ts`), and the full General Ledger (`ledger.test.ts`).
+  and secret redaction (`audit.test.ts`), the full General Ledger (`ledger.test.ts`), and
+  accounts payable / supplier payments (`supplier-payable.test.ts`).
+
+---
+
+## 💳 Accounts Payable & Supplier Payments (Sprint 19)
+
+Sprint 19 mirrors the customer receivable side with a full **accounts payable** lifecycle for suppliers.
+
+### Data model
+
+- **`supplier_ledger`** — debit/credit/running_balance per supplier (`entry_type`: purchase | payment | adjustment).
+- **`supplier_payments`** — money paid out to suppliers (amount, unallocated_amount, payment_mode, status).
+- **`supplier_payment_allocations`** — links a supplier payment to one or more purchases.
+- **`suppliers.total_payable`** — cached outstanding payable in paise (updated atomically with ledger writes).
+
+### Purchase postings
+
+When a purchase is recorded, the service writes supplier-ledger entries mirroring the customer invoice pattern:
+
+1. **Debit** the full `total_amount` (purchase obligation).
+2. **Credit** any `paid_amount` paid at purchase time.
+3. Increment `total_payable` by the unpaid portion (`total_amount − paid_amount`).
+
+The Sprint 18 GL hook (Dr Purchases + GST Input / Cr AP + Cash) is unchanged.
+
+### Supplier payment workflow
+
+`POST /api/v1/supplier-payments` atomically:
+
+1. Validates supplier and purchase ownership.
+2. Inserts the payment and optional allocations.
+3. Updates each purchase's `paid_amount` and `payment_status`.
+4. Credits the supplier ledger and reduces `total_payable`.
+5. Posts GL: **Dr Accounts Payable, Cr Cash/Bank**.
+
+Advance payments (unallocated) can be applied later via `POST /supplier-payments/:id/allocate`.
+
+### APIs
+
+- **`GET /api/v1/suppliers/:id/ledger`** — paginated payable ledger.
+- **`GET /api/v1/suppliers/:id/balance`** — outstanding payable with computed vs cached integrity check.
+- **`GET/POST /api/v1/supplier-payments`** — list and create supplier payments.
+- **`GET /api/v1/supplier-payments/:id`** — payment detail with allocations.
+- **`POST /api/v1/supplier-payments/:id/allocate`** — allocate an advance payment to purchases.
+
+All endpoints are documented in the OpenAPI spec (`/api/v1/docs`).
 

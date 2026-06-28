@@ -1,10 +1,14 @@
 import { BaseRepository } from './base.repo';
 import db from '../config/database';
-import type { Purchase, PurchaseItem } from '@dhanlekha/shared';
+import type { Purchase, PurchaseItem, PurchasePaymentStatus } from '@dhanlekha/shared';
 
 export class PurchaseRepository extends BaseRepository<Purchase> {
   constructor(tenantId: string, trx?: any) {
     super(tenantId, 'purchases', trx);
+  }
+
+  async findById(id: string): Promise<Purchase | undefined> {
+    return await this.getQuery().where({ id }).first();
   }
 
   async create(purchase: Purchase): Promise<void> {
@@ -19,6 +23,22 @@ export class PurchaseRepository extends BaseRepository<Purchase> {
   async getItems(purchaseId: string): Promise<PurchaseItem[]> {
     const qb = this.trx ? this.trx('purchase_items') : db('purchase_items');
     return await qb.where({ tenant_id: this.tenantId, purchase_id: purchaseId });
+  }
+
+  /** Update paid_amount and payment_status after a supplier payment allocation. */
+  async updatePaymentStatus(
+    purchaseId: string,
+    paidAmount: number,
+    paymentStatus: PurchasePaymentStatus
+  ): Promise<void> {
+    const qb = this.trx ? this.trx('purchases') : db('purchases');
+    await qb
+      .where({ id: purchaseId, tenant_id: this.tenantId })
+      .update({
+        paid_amount: paidAmount,
+        payment_status: paymentStatus,
+        updated_at: new Date().toISOString(),
+      });
   }
 
   async listPaged(
