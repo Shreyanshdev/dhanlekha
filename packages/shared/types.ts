@@ -125,6 +125,7 @@ export interface Supplier {
   phone: string | null;
   address: string | null;
   gst_number: string | null;
+  total_payable: number;     // Cached outstanding payable in paise
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
@@ -261,6 +262,49 @@ export interface PaymentAllocation {
   tenant_id: string;
   payment_id: string;
   invoice_id: string;
+  allocated_amount: number;          // In paise
+  created_at: string;
+}
+
+// ─── Supplier Payables (Sprint 19) ───
+
+export interface SupplierLedger {
+  id: string;
+  tenant_id: string;
+  supplier_id: string;
+  entry_type: 'purchase' | 'payment' | 'adjustment';
+  reference_id: string;
+  debit: number;                     // In paise
+  credit: number;                  // In paise
+  running_balance: number;         // In paise
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface SupplierPayment {
+  id: string;
+  tenant_id: string;
+  branch_id: string;
+  supplier_id: string;
+  created_by: string;
+  amount: number;                    // Total paid out, in paise
+  unallocated_amount: number;        // Remaining unallocated, in paise
+  payment_mode: PaymentMode;
+  status: PaymentStatus;
+  reference_number: string | null;
+  note: string | null;
+  payment_date: string;              // YYYY-MM-DD local date
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierPaymentAllocation {
+  id: string;
+  tenant_id: string;
+  supplier_payment_id: string;
+  purchase_id: string;
   allocated_amount: number;          // In paise
   created_at: string;
 }

@@ -4,16 +4,15 @@
 
 ---
 
-## Current Sprint: Sprint 19 — Accounts Payable & Supplier Payments
+## Current Sprint: Sprint 20 — Financial Statements & Reporting
 **Status:** ⬜ Not Started
 **Phase:** 4.5 — Premium ERP Backend (Sprints 17–29)
-**Previous:** Sprint 18 (Double-Entry General Ledger) ✅ Complete
+**Previous:** Sprint 19 (Accounts Payable & Supplier Payments) ✅ Complete
 
-> **Sprint 18 ✅** — The double-entry General Ledger is live: `chart_of_accounts`,
-> `journal_entries`, `journal_lines`, a default chart of accounts seeded per tenant,
-> a balanced `postJournal` service, and journal postings hooked into invoice,
-> payment, purchase, and expense flows. A full automated test suite (Vitest +
-> Supertest, **46 tests**) now covers Sprint 17 + Sprint 18.
+> **Sprint 19 ✅** — Full accounts-payable lifecycle: `supplier_ledger`,
+> `supplier_payments` + allocations, `suppliers.total_payable` cache, purchase
+> postings, supplier payment GL (Dr AP / Cr Cash/Bank), and supplier ledger/balance
+> APIs. **57 automated tests** now cover Sprints 17–19.
 
 > Backend Sprints 0–16 are complete. Phase 4.5 (Sprints 17–29) adds the premium ERP layer
 > (accounting, GST, orders, CRM, platform) and Phase 4.6 (Sprints 30–32) adds offline resilience,
@@ -346,8 +345,16 @@
 **Testing milestone (Sprint 17 + 18):** introduced Vitest + Supertest with an isolated SQLite test DB (`globalSetup` migrate+seed, serial execution, WAL), helper utilities, and **46 passing tests** across money math, invoices, quotas, settings, subscriptions, audit log, and the ledger. Fixed `requireRole` to return `403` (not `401`).
 
 ### Sprint 19: Accounts Payable & Supplier Payments
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 **Goal:** supplier_ledger, supplier_payments + allocations; purchases post AP entries; outstanding payable per supplier.
+
+**Delivered:**
+- **Migration** `20260629120000_sprint19_accounts_payable.ts` — `supplier_ledger` (debit/credit/running_balance), `supplier_payments`, `supplier_payment_allocations`, `suppliers.total_payable` cached column (paise).
+- **Purchase hook** — on create, posts supplier-ledger debit (full purchase) + credit (if paid at purchase), updates `total_payable`; GL from Sprint 18 unchanged.
+- **Supplier payments module** — `POST /supplier-payments` (pay + allocate to purchases), `POST /supplier-payments/:id/allocate` (advance allocation), `GET /supplier-payments`, `GET /supplier-payments/:id`; posts GL Dr AP / Cr Cash/Bank.
+- **Supplier APIs** — `GET /suppliers/:id/ledger` (paginated, filterable), `GET /suppliers/:id/balance` (computed vs cached integrity check).
+- **Shared types** — `SupplierLedger`, `SupplierPayment`, `SupplierPaymentAllocation`; `Supplier.total_payable`.
+- **Tests** — `supplier-payable.test.ts` (11 tests): ledger on purchase, partial pay at purchase, supplier payments + advance allocation, validation guards, multi-purchase cumulative payable, GL postings. **57 total tests passing.**
 
 ### Sprint 20: Financial Statements & Reporting
 **Status:** ⬜ Not Started

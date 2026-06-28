@@ -46,6 +46,7 @@ dhanlekha/
 │   │       │   ├── knexfile.ts     # Knex config (SQLite + PostgreSQL)
 │   │       │   ├── redis.ts        # Redis client (typed, graceful failure)
 │   │       │   ├── logger.ts       # (Sprint 16) Pino structured logger
+│   │       │   ├── openapi.ts    # (Sprint 17+) OpenAPI 3.0 spec served at /api/v1/docs
 │   │       │   └── aiClient.ts     # (Sprint 14) AI service HTTP client
 │   │       ├── middleware/
 │   │       │   ├── auth.middleware.ts           # JWT authentication
@@ -54,7 +55,9 @@ dhanlekha/
 │   │       │   ├── requestLogger.middleware.ts  # Structured request logging (Pino)
 │   │       │   ├── validate.middleware.ts       # Zod validation factory
 │   │       │   ├── rateLimit.middleware.ts      # (Sprint 16) 3-tier rate limiting
-│   │       │   └── sanitise.middleware.ts       # (Sprint 16) XSS/prototype pollution guard
+│   │       │   ├── sanitise.middleware.ts       # (Sprint 16) XSS/prototype pollution guard
+│   │       │   ├── audit.middleware.ts          # (Sprint 17) Mutation audit logging
+│   │       │   └── featureGate.middleware.ts    # (Sprint 17) SaaS quota enforcement
 │   │       ├── modules/                         # Each module = routes + validator + controller + service
 │   │       │   ├── auth/           # Login & Registration
 │   │       │   ├── users/          # Staff management
@@ -72,12 +75,24 @@ dhanlekha/
 │   │       │   ├── alerts/         # (Sprint 12) System Alerts & Notifications
 │   │       │   ├── analytics/      # (Sprint 13) Business Intelligence & Reporting
 │   │       │   ├── ai/             # (Sprint 14) AI Integration (parse, voice, suggest, demand, enrich)
+│   │       │   ├── settings/       # (Sprint 17) Tenant configuration key/value store
+│   │       │   ├── subscriptions/  # (Sprint 17) Plan overview & change-plan
+│   │       │   ├── accounts/       # (Sprint 18) Chart of accounts & account ledgers
+│   │       │   ├── journals/       # (Sprint 18) Double-entry journal entries
+│   │       │   ├── supplier-payments/ # (Sprint 19) Supplier payouts & purchase allocations
 │   │       │   ├── tenants/        # SaaS Tenant management
 │   │       │   └── health/         # Liveness + readiness probes
+│   │       ├── accounting/         # (Sprint 18) CoA seed + postJournal GL service
 │   │       ├── repositories/
 │   │       │   ├── base.repo.ts          # Generic multi-tenant base (auto tenant_id scoping)
 │   │       │   ├── branch.repo.ts        # Branch-scoped queries (tenant + branch isolation)
 │   │       │   ├── customer.repo.ts      # Customer profiles & balances
+│   │       │   ├── account.repo.ts       # (Sprint 18) Chart of accounts
+│   │       │   ├── journal.repo.ts       # (Sprint 18) Journal entries & lines
+│   │       │   ├── supplier-payment.repo.ts # (Sprint 19) Supplier payments & allocations
+│   │       │   ├── setting.repo.ts       # (Sprint 17) Tenant settings
+│   │       │   ├── subscription.repo.ts  # (Sprint 17) Subscriptions & usage
+│   │       │   ├── auditLog.repo.ts      # (Sprint 17) Append-only audit trail
 │   │       │   ├── expense.repo.ts       # Operating costs
 │   │       │   ├── inventory.repo.ts     # Branch inventory logs
 │   │       │   ├── invoice.repo.ts       # Invoices & line items (consolidated domain)
@@ -94,8 +109,9 @@ dhanlekha/
 │   │       │   └── user.repo.ts          # Staff accounts
 │   │       ├── database/
 │   │       │   ├── transaction.ts        # Atomic transaction helper (withTransaction)
-│   │       │   ├── migrations/           # Knex migrations (Sprints 1-16)
+│   │       │   ├── migrations/           # Knex migrations (Sprints 1–19+)
 │   │       │   └── seeds/                # Seed data (plans, default admins)
+│   │       ├── test/                     # (Sprint 17+) Vitest + Supertest (57 tests)
 │   │       ├── services/
 │   │       │   └── cache.service.ts     # (Sprint 15) Redis cache — getOrSet, delPattern
 │   │       ├── jobs/
@@ -251,7 +267,7 @@ AI Service (Python FastAPI) — optional
 | Phase 2 | 3–10 | Core ERP backend APIs | ✅ Complete |
 | Phase 3 | 11–14 | System features (sync, alerts, AI) | ✅ Complete |
 | Phase 4 | 15–16 | Performance & production readiness | ✅ Complete |
-| Phase 4.5 | 17–29 | Premium ERP backend (accounting, GST, orders, CRM, platform) | 🔄 In Progress (Sprint 17 ✅, Sprint 18 next) |
+| Phase 4.5 | 17–29 | Premium ERP backend (accounting, GST, orders, CRM, platform) | 🔄 In Progress (Sprints 17–19 ✅, Sprint 20 next) |
 | Phase 4.6 | 30–32 | Offline resilience, drafts/chit, bulk onboarding, licensing | ⬜ Planned |
 | Phase 5 | 33–41 | Frontend (Next.js + Electron) | ⬜ Planned |
 
@@ -267,7 +283,9 @@ See [docs/sprint.md](docs/sprint.md) for the full execution plan and [docs/progr
 - 📦 **Inventory Management** — Stock tracking, batch support (FEFO), audit logs, low-stock alerts
 - 💰 **Payment System** — Multi-invoice allocation, advance payments, UPI/cash/card
 - 📒 **Ledger (Udhaar)** — Append-only double-entry, running balance, credit limit enforcement
-- 🏪 **Multi-Tenant SaaS** — Plan-based feature gating (Starter/Growth/Enterprise), usage quotas
+- 🏛️ **General Ledger** — Chart of accounts, balanced journal entries, GL hooks on invoice/payment/purchase/expense (Sprint 18)
+- 💳 **Accounts Payable** — Supplier ledger, supplier payments with purchase allocation, outstanding payable tracking (Sprint 19)
+- 🏪 **Multi-Tenant SaaS** — Plan-based feature gating (Starter/Growth/Enterprise), usage quotas, settings & subscription APIs (Sprint 17)
 - 📴 **Offline-First** — SQLite local DB, sync queue, conflict resolution, device registration
 - 🤖 **AI Features** — Product parsing, demand prediction, smart suggestions, voice billing
 - 📊 **Analytics** — Dashboard metrics (cached), daily snapshots, P&L calculation
@@ -279,6 +297,8 @@ See [docs/sprint.md](docs/sprint.md) for the full execution plan and [docs/progr
 ## 🔌 API Reference
 
 The backend follows RESTful principles and returns standard JSON responses. All protected routes require a Bearer JWT token.
+
+**Interactive docs:** Swagger UI at [`/api/v1/docs`](http://localhost:3001/api/v1/docs) · raw OpenAPI JSON at `/api/v1/docs.json`. All money values are **integer paise** (₹1 = 100 paise).
 
 ### 🏥 System
 | Method | Endpoint | Description |
@@ -325,6 +345,8 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 | POST | `/api/v1/customers` | Add customer with credit limit |
 | GET | `/api/v1/suppliers` | Search/list inventory suppliers |
 | POST | `/api/v1/suppliers` | Add supplier with GST details |
+| GET | `/api/v1/suppliers/:id/ledger` | Supplier payable ledger (paginated) *(Sprint 19)* |
+| GET | `/api/v1/suppliers/:id/balance` | Outstanding payable + integrity check *(Sprint 19)* |
 
 ### 🧾 Billing & Invoicing (Sprint 5 & 6)
 | Method | Endpoint | Description |
@@ -394,6 +416,34 @@ The backend follows RESTful principles and returns standard JSON responses. All 
 | POST | `/api/v1/ai/enrich-product` | Background AI product enrichment (Growth+) |
 | GET | `/api/v1/ai/suggestions/:productId` | Get cached AI data for product |
 
+### ⚙️ Settings & Subscriptions (Sprint 17)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/settings` | Read tenant configuration (invoice prefix, GST number, etc.) |
+| PATCH | `/api/v1/settings` | Update tenant settings (Admin only) |
+| GET | `/api/v1/subscriptions` | Current plan, usage vs limits, plan catalogue |
+| POST | `/api/v1/subscriptions/change-plan` | Upgrade/downgrade plan (Admin only) |
+
+### 🏛️ General Ledger (Sprint 18)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/accounts` | Chart of accounts as a hierarchical tree |
+| POST | `/api/v1/accounts` | Create a custom ledger account (Admin only) |
+| GET | `/api/v1/accounts/:id/ledger` | Account ledger with running balance |
+| GET | `/api/v1/journals` | List journal entries with lines (paginated, filterable) |
+| POST | `/api/v1/journals` | Post a balanced manual journal entry (Admin only) |
+
+> Invoice, payment, purchase, and expense flows automatically post balanced GL entries via `postJournal`.
+
+### 💳 Supplier Payments / Accounts Payable (Sprint 19)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/supplier-payments` | Pay a supplier; optionally allocate to purchases |
+| GET | `/api/v1/supplier-payments` | List supplier payments (paginated, filterable) |
+| GET | `/api/v1/supplier-payments/:id` | Get supplier payment detail with allocations |
+| POST | `/api/v1/supplier-payments/:id/allocate` | Allocate an advance payment to purchases |
+
+> Purchases automatically write supplier-ledger entries and update `suppliers.total_payable`.
 
 ---
 

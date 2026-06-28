@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { PurchaseRepository } from '../../repositories/purchase.repo';
+import { SupplierRepository } from '../../repositories/supplier.repo';
 import { InventoryRepository, InventoryLogRepository, InventoryBatchRepository } from '../../repositories/inventory.repo';
 import { withTransaction } from '../../database/transaction';
 import { postJournal } from '../../accounting/ledger.service';
@@ -22,6 +23,7 @@ export async function createPurchase(
 ): Promise<Purchase> {
   return await withTransaction(async (trx) => {
     const purchaseRepo = new PurchaseRepository(tenantId, trx);
+    const supplierRepo = new SupplierRepository(tenantId, trx);
     const invRepo = new InventoryRepository(tenantId, data.branch_id, trx);
     const batchRepo = new InventoryBatchRepository(tenantId, data.branch_id, trx);
     const logRepo = new InventoryLogRepository(tenantId, data.branch_id, trx);
@@ -164,6 +166,49 @@ export async function createPurchase(
         createdBy: userId,
         lines,
       });
+    }
+
+    // Supplier payable ledger (Sprint 19) — mirror customer invoice ledger pattern.
+    const supplier = await supplierRepo.findById(data.supplier_id);
+    if (!supplier) throw new NotFoundError('Supplier');
+
+    const payablePortion = data.total_amount - data.paid_amount;
+    const latestEntry = await supplierRepo.getLatestLedgerEntry(data.supplier_id);
+    const startBalance = latestEntry
+      ? Number(latestEntry.running_balance)
+      : Number(supplier.total_payable ?? 0);
+
+    const balanceAfterPurchase = startBalance + data.total_amount;
+    await supplierRepo.addLedgerEntry({
+      id: uuidv4(),
+      tenant_id: tenantId,
+      supplier_id: data.supplier_id,
+      entry_type: 'purchase',
+      reference_id: purchaseId,
+      debit: data.total_amount,
+      credit: 0,
+      running_balance: balanceAfterPurchase,
+      created_by: userId,
+    });
+
+    let finalBalance = balanceAfterPurchase;
+    if (data.paid_amount > 0) {
+      finalBalance = balanceAfterPurchase - data.paid_amount;
+      await supplierRepo.addLedgerEntry({
+        id: uuidv4(),
+        tenant_id: tenantId,
+        supplier_id: data.supplier_id,
+        entry_type: 'payment',
+        reference_id: purchaseId,
+        debit: 0,
+        credit: data.paid_amount,
+        running_balance: finalBalance,
+        created_by: userId,
+      });
+    }
+
+    if (payablePortion !== 0) {
+      await supplierRepo.updatePayable(data.supplier_id, payablePortion);
     }
 
     return purchase;

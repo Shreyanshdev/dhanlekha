@@ -34,6 +34,7 @@ import settingsRoutes from './modules/settings/settings.routes';
 import subscriptionsRoutes from './modules/subscriptions/subscriptions.routes';
 import accountsRoutes from './modules/accounts/accounts.routes';
 import journalsRoutes from './modules/journals/journals.routes';
+import supplierPaymentsRoutes from './modules/supplier-payments/supplier-payments.routes';
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use('/api/v1/suppliers', suppliersRoutes);
 app.use('/api/v1/invoices', heavyLimiter, invoicesRoutes);
 app.use('/api/v1/payments', heavyLimiter, paymentsRoutes);
 app.use('/api/v1/purchases', heavyLimiter, purchasesRoutes);
+app.use('/api/v1/supplier-payments', heavyLimiter, supplierPaymentsRoutes);
 
 app.use('/api/v1', ledgerRoutes);
 app.use('/api/v1/expenses', expensesRoutes);

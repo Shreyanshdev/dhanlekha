@@ -117,3 +117,71 @@ export async function createPercentageOffer(
 export async function flushAsyncWrites(ms = 150): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/** Create a supplier. Returns supplier id. */
+export async function createSupplier(
+  token: string,
+  overrides: Partial<{ name: string; phone: string; gst_number: string }> = {}
+): Promise<string> {
+  const res = await request(app)
+    .post('/api/v1/suppliers')
+    .set('Authorization', bearer(token))
+    .send({
+      name: overrides.name ?? 'Test Supplier',
+      phone: overrides.phone ?? '9876543210',
+      gst_number: overrides.gst_number ?? null,
+    })
+    .expect(201);
+
+  return res.body.data.id;
+}
+
+/** Record a stock-in purchase. Returns purchase id and totals. */
+export async function createPurchase(
+  token: string,
+  opts: {
+    branchId: string;
+    supplierId: string;
+    productId: string;
+    quantity?: number;
+    unitPrice?: number;
+    taxRate?: number;
+    paidAmount?: number;
+  }
+): Promise<{ id: string; total_amount: number; paid_amount: number }> {
+  const quantity = opts.quantity ?? 10;
+  const unitPrice = opts.unitPrice ?? 10000; // ₹100/unit in paise
+  const taxRate = opts.taxRate ?? 18;
+  const lineSubtotal = unitPrice * quantity;
+  const lineTax = Math.round(lineSubtotal * taxRate / 100);
+  const lineTotal = lineSubtotal + lineTax;
+  const paidAmount = opts.paidAmount ?? 0;
+
+  const res = await request(app)
+    .post('/api/v1/purchases')
+    .set('Authorization', bearer(token))
+    .send({
+      branch_id: opts.branchId,
+      supplier_id: opts.supplierId,
+      subtotal: lineSubtotal,
+      tax_amount: lineTax,
+      discount_amount: 0,
+      total_amount: lineTotal,
+      paid_amount: paidAmount,
+      items: [{
+        product_id: opts.productId,
+        quantity,
+        purchase_price: unitPrice,
+        tax_rate: taxRate,
+        tax_amount: lineTax,
+        total: lineTotal,
+      }],
+    })
+    .expect(201);
+
+  return {
+    id: res.body.data.id,
+    total_amount: lineTotal,
+    paid_amount: paidAmount,
+  };
+}

@@ -72,3 +72,31 @@ export async function deleteSupplier(tenantId: string, id: string): Promise<void
   }
   await repo.softDelete(id);
 }
+
+export async function getSupplierLedger(
+  tenantId: string,
+  supplierId: string,
+  page: number,
+  limit: number,
+  filters: { from?: string; to?: string; entry_type?: string } = {}
+) {
+  const repo = new SupplierRepository(tenantId);
+  const supplier = await repo.findById(supplierId);
+  if (!supplier) throw new NotFoundError('Supplier');
+
+  return await repo.getLedgerPaged(supplierId, page, limit, filters);
+}
+
+export async function getSupplierBalance(tenantId: string, supplierId: string) {
+  const repo = new SupplierRepository(tenantId);
+  const supplier = await repo.findById(supplierId);
+  if (!supplier) throw new NotFoundError('Supplier');
+
+  const summary = await repo.getBalanceSummary(supplierId);
+
+  return {
+    supplier_id: supplierId,
+    supplier_name: supplier.name,
+    ...summary,
+  };
+}

@@ -21,3 +21,11 @@ export type UpdateSupplierInput = z.infer<typeof updateSupplierSchema>;
 export const supplierIdParamSchema = z.object({
   id: z.string().uuid('Invalid supplier ID'),
 });
+
+export const supplierLedgerQuerySchema = z.object({
+  page: z.string().regex(/^\d+$/).optional().default('1'),
+  limit: z.string().regex(/^\d+$/).optional().default('20'),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  entry_type: z.enum(['purchase', 'payment', 'adjustment']).optional(),
+});

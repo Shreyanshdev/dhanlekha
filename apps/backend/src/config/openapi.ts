@@ -218,6 +218,7 @@ const schemas: any = {
       phone: nullableStr(),
       address: nullableStr(),
       gst_number: nullableStr(),
+      total_payable: money('Cached outstanding payable in paise'),
       created_at: ts(),
       updated_at: ts(),
     },
@@ -570,6 +571,76 @@ const schemas: any = {
     required: ['invoice_id', 'allocated_amount'],
     properties: { invoice_id: uuid(), allocated_amount: money('Amount applied to the invoice, in paise') },
   },
+
+  // ─── Supplier Payables (Sprint 19) ───
+  SupplierLedger: {
+    type: 'object',
+    properties: {
+      id: uuid(),
+      supplier_id: uuid(),
+      entry_type: { type: 'string', enum: ['purchase', 'payment', 'adjustment'] },
+      reference_id: uuid(),
+      debit: money(),
+      credit: money(),
+      running_balance: money(),
+      notes: nullableStr(),
+      created_by: { ...uuid(), nullable: true },
+      created_at: ts(),
+    },
+  },
+  SupplierPayment: {
+    type: 'object',
+    properties: {
+      id: uuid(),
+      supplier_id: uuid(),
+      amount: money('Total paid out, in paise'),
+      unallocated_amount: money(),
+      payment_mode: { type: 'string', enum: ['cash', 'upi', 'card', 'bank_transfer', 'cheque'] },
+      status: { type: 'string', enum: ['received', 'fully_allocated', 'partially_allocated'] },
+      reference_number: nullableStr(),
+      note: nullableStr(),
+      payment_date: dateStr(),
+      allocations: { type: 'array', items: ref('SupplierAllocationItem') },
+      created_at: ts(),
+    },
+  },
+  SupplierAllocationItem: {
+    type: 'object',
+    required: ['purchase_id', 'allocated_amount'],
+    properties: { purchase_id: uuid(), allocated_amount: money('Amount applied to the purchase, in paise') },
+  },
+  CreateSupplierPaymentRequest: {
+    type: 'object',
+    required: ['supplier_id', 'amount', 'payment_mode'],
+    properties: {
+      supplier_id: uuid(),
+      amount: money(),
+      payment_mode: { type: 'string', enum: ['cash', 'upi', 'card', 'bank_transfer', 'cheque'] },
+      allocations: { type: 'array', items: ref('SupplierAllocationItem') },
+      reference_number: { type: 'string', nullable: true },
+      note: { type: 'string', nullable: true },
+      payment_date: dateStr(),
+    },
+  },
+  AllocateSupplierPaymentRequest: {
+    type: 'object',
+    required: ['allocations'],
+    properties: { allocations: { type: 'array', minItems: 1, items: ref('SupplierAllocationItem') } },
+  },
+  SupplierBalanceSummary: {
+    type: 'object',
+    properties: {
+      supplier_id: uuid(),
+      supplier_name: { type: 'string' },
+      total_debit: money(),
+      total_credit: money(),
+      computed_balance: money(),
+      cached_balance: money(),
+      is_consistent: { type: 'boolean' },
+      entry_count: { type: 'integer' },
+      latest_entry_at: { ...ts(), nullable: true },
+    },
+  },
   CreateAdjustmentRequest: {
     type: 'object',
     required: ['customer_id', 'notes'],
@@ -909,6 +980,62 @@ const paths: any = {
     patch: { tags: ['Suppliers'], summary: 'Update a supplier', parameters: [pathId('id', 'Supplier UUID')], requestBody: reqBody('UpdateSupplierRequest'), responses: { '200': dataResp('Updated supplier', ref('Supplier')), ...errorResponses } },
     delete: { tags: ['Suppliers'], summary: 'Soft-delete a supplier', parameters: [pathId('id', 'Supplier UUID')], responses: { '200': dataResp('Deleted', { type: 'object' }), ...errorResponses } },
   },
+  '/suppliers/{id}/ledger': {
+    get: {
+      tags: ['Suppliers'], summary: 'Supplier payable ledger (paginated)',
+      parameters: [
+        pathId('id', 'Supplier UUID'),
+        ...paginationQuery,
+        query('from', dateStr()),
+        query('to', dateStr()),
+        query('entry_type', { type: 'string', enum: ['purchase', 'payment', 'adjustment'] }),
+      ],
+      responses: { '200': listResp('Supplier ledger entries', ref('SupplierLedger')), ...errorResponses },
+    },
+  },
+  '/suppliers/{id}/balance': {
+    get: {
+      tags: ['Suppliers'], summary: 'Outstanding payable summary with integrity check',
+      parameters: [pathId('id', 'Supplier UUID')],
+      responses: { '200': dataResp('Supplier balance', ref('SupplierBalanceSummary')), ...errorResponses },
+    },
+  },
+
+  // ─── Supplier Payments ───
+  '/supplier-payments': {
+    post: {
+      tags: ['Supplier Payments'],
+      summary: 'Pay a supplier (optionally allocate to purchases)',
+      requestBody: reqBody('CreateSupplierPaymentRequest'),
+      responses: { '201': dataResp('Created supplier payment', ref('SupplierPayment')), ...errorResponses },
+    },
+    get: {
+      tags: ['Supplier Payments'], summary: 'List supplier payments (paginated)',
+      parameters: [
+        ...paginationQuery,
+        query('supplier_id', uuid()),
+        query('status', { type: 'string', enum: ['received', 'fully_allocated', 'partially_allocated'] }),
+        query('payment_mode', { type: 'string', enum: ['cash', 'upi', 'card', 'bank_transfer', 'cheque'] }),
+      ],
+      responses: { '200': listResp('Supplier payments', ref('SupplierPayment')), ...errorResponses },
+    },
+  },
+  '/supplier-payments/{id}': {
+    get: {
+      tags: ['Supplier Payments'], summary: 'Get a supplier payment with allocations',
+      parameters: [pathId('id', 'Supplier payment UUID')],
+      responses: { '200': dataResp('Supplier payment', ref('SupplierPayment')), ...errorResponses },
+    },
+  },
+  '/supplier-payments/{id}/allocate': {
+    post: {
+      tags: ['Supplier Payments'],
+      summary: 'Allocate an existing supplier payment to purchases',
+      parameters: [pathId('id', 'Supplier payment UUID')],
+      requestBody: reqBody('AllocateSupplierPaymentRequest'),
+      responses: { '200': dataResp('Updated supplier payment', ref('SupplierPayment')), ...errorResponses },
+    },
+  },
 
   // ─── Invoices ───
   '/invoices': {
@@ -1132,6 +1259,7 @@ export const openapiDocument: any = {
     { name: 'Suppliers', description: 'Supplier master' },
     { name: 'Invoices', description: 'Billing engine' },
     { name: 'Payments', description: 'Payments & allocations' },
+    { name: 'Supplier Payments', description: 'Supplier payouts & purchase allocations (AP)' },
     { name: 'Ledger', description: 'Customer ledger & adjustments' },
     { name: 'Purchases', description: 'Purchase entries' },
     { name: 'Expenses', description: 'Expense tracking' },
